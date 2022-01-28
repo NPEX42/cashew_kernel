@@ -5,7 +5,7 @@ members = [
 
 [package]
 name = "cashew_kernel"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 [features]
@@ -22,6 +22,7 @@ bootloader = {version = "0.10.11"}
 spinning_top = "0.2.4"
 conquer-once = { version = "0.3.2", default-features = false }
 pic8259 = "0.10.2"
+pc-keyboard = "0.5.1"
 
 [dependencies.font8x8]
 version = "0.3.1"

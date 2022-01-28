@@ -104,7 +104,19 @@ impl Frame {
         chr: char,
         fg: Pixel, bg: Pixel )
     {
-        let font = fonts::BASIC_FONTS.get(chr).unwrap_or(fonts::UNICODE_REPLACEMENT);
+
+
+        let font = if chr >= ' ' {
+            fonts::BASIC_FONTS.get(chr).unwrap_or(fonts::UNICODE_REPLACEMENT)
+        } else if chr == '\n' {
+            fonts::NEW_LINE_PRINTABLE
+        } else if chr == '\0' {
+            fonts::NULL_PRINTABLE
+        } else if chr == '\r' {
+            fonts::CR_PRINTABLE
+        } else {
+            fonts::UNICODE_REPLACEMENT
+        };
 
         for row in 0..font.len() {
             for bit in 0..8 {

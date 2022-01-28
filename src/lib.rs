@@ -12,5 +12,6 @@ pub mod terminal;
 pub mod colors;
 pub mod pit;
 pub mod graphics_2d;
+pub mod input;
 
 pub mod arch;

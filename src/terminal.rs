@@ -29,32 +29,91 @@ pub fn write_fmt(args: core::fmt::Arguments) {
     TERMINAL.get().unwrap().lock().write_fmt(args).expect("Failed To Write To Terminal");
 }
 
+pub fn home() {
+    set_y(0);
+    set_x(0);
+}
+
+pub fn clear() {
+    unsafe {TERMINAL_FB.clear(get_bg());}
+    swap()
+}
+
+pub fn buf_height() -> usize {
+    screen_height() / FONT_HEIGHT
+}
+
+pub fn buf_width() -> usize {
+    screen_width() / FONT_WIDTH
+}
+
+pub fn move_y(amount: isize) {
+    let mut y = y() as isize;
+    if (y) < screen_height() as isize - amount {
+        y += amount;
+    }
+    set_y(y as usize);
+}
+
 pub fn set_bg(color: Pixel) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
     TERMINAL.get().unwrap().lock().bg_color = color;
+    });
 }
 
 pub fn set_fg(color: Pixel) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
     TERMINAL.get().unwrap().lock().fg_color = color;
+    })
 }
 
 pub fn get_fg() -> Pixel {
+    x86_64::instructions::interrupts::without_interrupts(|| {
     TERMINAL.get().unwrap().lock().fg_color
+    })
 }
 
 pub fn get_bg() -> Pixel {
+    x86_64::instructions::interrupts::without_interrupts(|| {
     TERMINAL.get().unwrap().lock().bg_color
+    })
 }
 
 pub fn set_x(x: usize) {
-    TERMINAL.get().unwrap().lock().x = x;
+    x86_64::instructions::interrupts::without_interrupts(|| {
+    TERMINAL.get().unwrap().lock().x = x;   
+    });
 }
 
 pub fn set_y(y: usize) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+    let y = y.clamp(0, screen_height() - FONT_HEIGHT);
     TERMINAL.get().unwrap().lock().y = y;
+    });
+}
+
+pub fn x() -> usize {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+    TERMINAL.get().unwrap().lock().x
+    })
+}
+
+pub fn y() -> usize {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+    TERMINAL.get().unwrap().lock().y
+    })
 }
 
 pub fn print_custom(bitmap: &[u8]) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
     TERMINAL.get().unwrap().lock().draw_bitmap(bitmap);
+    });
+}
+
+pub fn set_print_newline(state: bool) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+    TERMINAL.get().unwrap().lock().set_print_newline(state);
+    });
 }
 
 pub fn swap() {
@@ -97,7 +156,9 @@ pub struct TerminalWriter {
     y: usize,
 
     fg_color: Pixel,
-    bg_color: Pixel
+    bg_color: Pixel,
+
+    print_control: bool,
 }
 
 impl TerminalWriter {
@@ -109,13 +170,19 @@ impl TerminalWriter {
 
             x: 0,
             y: 0,
+
+            print_control: false,
         }
     }
 
     pub fn put_str(&mut self, text: &str) {
         for chr in text.chars() {
             if chr == '\n' {
-                self.newline();
+                if self.print_control {
+                    self.put_char(chr)
+                } else {
+                    self.newline();
+                }
             } else {
                 self.put_char(chr)
             }
@@ -156,6 +223,10 @@ impl TerminalWriter {
 
     pub fn set_fg(&mut self, color: Pixel) {
         self.fg_color = color;
+    }
+
+    pub fn set_print_newline(&mut self, state: bool) {
+        self.print_control = state;
     }
 }
 

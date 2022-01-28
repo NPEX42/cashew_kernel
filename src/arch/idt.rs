@@ -10,6 +10,8 @@ use super::pic::PIC1;
 #[derive(Debug, Clone, Copy)]
 pub enum Interrupts {
     Timer = PIC1,
+    Keyboard,
+
 }
 
 impl Interrupts {
@@ -33,6 +35,7 @@ lazy_static! {
 
 
         idt[Interrupts::Timer.as_usize()].set_handler_fn(timer);
+        idt[Interrupts::Keyboard.as_usize()].set_handler_fn(keyboard);
 
         idt
     };
@@ -60,4 +63,9 @@ extern "x86-interrupt" fn timer(_: InterruptStackFrame) {
     crate::pit::update_timers();
     crate::graphics_2d::vblank();
     pic::notify_eoi(Interrupts::Timer.as_u8())
+}
+
+extern "x86-interrupt" fn keyboard(_: InterruptStackFrame) {
+    crate::input::keyboard::keypress();
+    pic::notify_eoi(Interrupts::Keyboard.as_u8());
 }

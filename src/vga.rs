@@ -72,7 +72,14 @@ pub fn draw_bitmap(x: usize, y: usize, fg: Pixel, bg: Pixel, bitmap: &[u8]) {
 }
 
 pub fn set_pixels(pixels: &[Pixel]) {
-    get().unwrap().lock().framebuffer_mut().copy_from_slice(pixels);
+    let dest = get().unwrap().lock().framebuffer_mut().as_mut_ptr() as *mut u128;
+    let src = pixels.as_ptr() as *const u128;
+
+    unsafe {
+        core::ptr::copy(src, dest, pixels.len() / (size_of::<u128>() / size_of::<Pixel>()));
+    }
+
+
 }
 
 pub fn get() -> Option<&'static Locked<Vga<'static>>> {

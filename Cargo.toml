@@ -23,6 +23,7 @@ spinning_top = "0.2.4"
 conquer-once = { version = "0.3.2", default-features = false }
 pic8259 = "0.10.2"
 pc-keyboard = "0.5.1"
+ps2-mouse = "0.1.4"
 
 [dependencies.ansi-parser]
 version = "0.8.0"

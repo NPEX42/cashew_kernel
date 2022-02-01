@@ -16,7 +16,7 @@ pub mod colors;
 pub mod pit;
 pub mod graphics_2d;
 pub mod input;
-
+pub mod data;
 pub mod arch;
 
 #[panic_handler]

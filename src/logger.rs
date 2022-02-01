@@ -2,15 +2,15 @@
 #[macro_export]
 macro_rules! klog {
     ($fmt:expr, $($args:tt)*) => {
-        $crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
+        //$crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
         $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
-        $crate::terminal::swap();
+        //$crate::terminal::swap();
     };
 
     ($fmt:expr) => {
-        $crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
-        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
-        $crate::terminal::swap();
+        //$crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
+        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
+        //$crate::terminal::swap();
     };
 }
 

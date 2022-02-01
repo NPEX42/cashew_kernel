@@ -7,7 +7,7 @@
 use bootloader::{BootInfo};
 #[cfg(not(test))]
 use bootloader::entry_point;
-use cashew_kernel::{*};
+use cashew_kernel::{*, data::ringbuffer::RingBuffer};
 use graphics_2d::*;
 
 #[cfg(not(test))]
@@ -27,12 +27,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
         pit::set_frequency(0, 60);
 
-        input::ps2::PS2Controller::get().reinit().expect("[PS/2] - Initialization Failed...");
+        
+        input::init();
 
         #[cfg(test)]
         test_main();
-
-        klog!("Goodbye{}", "!\n");
     }
     loop {cashew_kernel::arch::pause();}
 }

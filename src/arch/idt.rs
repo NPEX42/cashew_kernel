@@ -72,7 +72,7 @@ extern "x86-interrupt" fn keyboard(_: InterruptStackFrame) {
 }
 
 extern "x86-interrupt" fn mouse(_: InterruptStackFrame) {
-    //crate::input::mouse::update();
+    crate::input::mouse::update();
     sprint!("Mouse Moved!\n");
     pic::notify_eoi(Interrupts::Mouse.as_u8());
 }

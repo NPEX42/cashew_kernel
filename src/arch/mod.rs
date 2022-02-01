@@ -10,6 +10,10 @@ pub fn initialize_interrupts() {
     pic::initialize();
 }
 
+pub fn spin() {
+    pause()
+}
+
 pub fn outb(port: u16, data: u8) {
     unsafe {
         let mut port: Port<u8> = Port::new(port);
@@ -53,11 +57,12 @@ pub fn inl(port: u16) -> u32 {
 }
 
 pub fn disable_interrupts() {
+    crate::sprint!("[Arch]: Disabling Interrupts\n");
     x64::instructions::interrupts::disable();
 }
 
 pub fn enable_interrupts() {
-    crate::sprint!("Enabling Interrupts\n");
+    crate::sprint!("[Arch]: Enabling Interrupts\n");
     x64::instructions::interrupts::enable();
 }
 

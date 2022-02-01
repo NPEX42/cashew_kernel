@@ -2,19 +2,15 @@
 #[macro_export]
 macro_rules! klog {
     ($fmt:expr, $($args:tt)*) => {
-        let old_color = $crate::terminal::get_fg();
-        use $crate::colors::C64_PALLETE;
-        $crate::terminal::set_fg(C64_PALLETE[13]);
-        $crate::terminal::write_fmt(format_args!(concat!("[LOG]: ", $fmt), $($args)*));
-        $crate::terminal::set_fg(old_color);
+        $crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
+        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
+        $crate::terminal::swap();
     };
 
     ($fmt:expr) => {
-        let old_color = $crate::terminal::get_fg();
-        use $crate::colors::C64_PALLETE;
-        $crate::terminal::set_fg(C64_PALLETE[13]);
-        $crate::terminal::write_fmt(format_args!(concat!("[LOG]: ", $fmt)));
-        $crate::terminal::set_fg(old_color);
+        $crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
+        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
+        $crate::terminal::swap();
     };
 }
 

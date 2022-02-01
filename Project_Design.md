@@ -1,5 +1,8 @@
 # The Cashew Project - A Rust UEFI/BIOS Kernel
 
+## Backburner
+- [-] - PS/2 Mouse Support
+
 ## Roadmap
 
 ### v0.1.0 - 2D Graphics
@@ -18,8 +21,7 @@
 
 ### v0.3.0 - User Input
 
-- [ ] - PS/2 Keyboard Support
-- [ ] - PS/2 Mouse Support
+- [x] - PS/2 Keyboard Support
 - [ ] - Simple Shell
 
 ### v0.4.0 - Disk I/O

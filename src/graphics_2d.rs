@@ -1,10 +1,9 @@
 use font8x8::UnicodeFonts;
 
-use crate::{vga, fonts, arch, pit};
+use crate::{vga, fonts, pit};
 
 const HEIGHT: usize = 480;
 const WIDTH: usize = 640;
-const PIXEL_STRIDE: usize = 4;
 
 static mut VBLANK: bool = false;
 
@@ -68,7 +67,7 @@ impl Frame {
         
         pit::sync();
 
-        //crate::sprint!("Swapping Frame Buffer.\n");
+        crate::sprint!("[FrameBuffer]: Swapping Frame Buffer.\n");
 
         vga::set_pixels(&self.pixels);
         unsafe {VBLANK = false;}

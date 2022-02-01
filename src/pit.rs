@@ -27,8 +27,6 @@ impl Timer {
     }
 }
 
-static mut TIMERS: [Timer; 4] = [Timer(0); 4];
-
 
 pub fn update_timers() {
     unsafe {
@@ -54,7 +52,7 @@ pub fn set_frequency(channel: u8, frequency: u16) {
         | (0b011 << 1) // Mode 2 - Freq. Divider
         | (0b0 << 0);  // Binary Mode
 
-    crate::sprint!("[PIT]: Command: 0b{:08b}", command);
+    crate::sprint!("[PIT]: Command: 0b{:08b}\n", command);
     let reload = PIT_BASE_FREQ / frequency as usize;
 
     unsafe {POLLING_FREQ = frequency as usize}

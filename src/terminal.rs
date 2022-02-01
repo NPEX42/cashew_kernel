@@ -1,9 +1,10 @@
 use core::fmt::Write;
 
+use ansi_parser::AnsiParser;
+use ansi_parser::AnsiSequence;
+use ansi_parser::Output;
 use conquer_once::spin::OnceCell;
 
-use crate::colors;
-use crate::colors::C64_PALLETE;
 use crate::graphics_2d::Frame;
 use crate::graphics_2d::Pixel;
 use crate::locked::Locked;
@@ -228,11 +229,26 @@ impl TerminalWriter {
     pub fn set_print_newline(&mut self, state: bool) {
         self.print_control = state;
     }
+
+    pub fn perform_ansi(&mut self, seq: AnsiSequence) {
+        match seq {
+            AnsiSequence::EraseDisplay => { clear() },
+            AnsiSequence::CursorPos(x, y) => {set_x((x as usize - 1) * FONT_WIDTH); set_y((y as usize - 1) * FONT_HEIGHT)}
+            _ => {}
+        }
+    }
 }
 
 impl Write for TerminalWriter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.put_str(s);
+        for code in s.ansi_parse() {
+            match code {
+                Output::TextBlock(text) => {self.put_str(text)},
+                Output::Escape(seq) => {
+                    self.perform_ansi(seq);
+                }
+            }
+        }
         
         Ok(())
     }

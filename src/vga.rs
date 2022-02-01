@@ -1,11 +1,10 @@
 use core::{fmt::Display, mem::size_of};
 
-use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
+use bootloader::boot_info::{FrameBufferInfo};
 use conquer_once::spin::OnceCell;
 use font8x8::UnicodeFonts;
-use spin::MutexGuard;
 
-use crate::{fonts, locked::Locked, arch::inb, graphics_2d::{self, Pixel}};
+use crate::{fonts, locked::Locked, graphics_2d::{self, Pixel}};
 
 const BUFFER_WIDTH: usize = 640;
 const BUFFER_HEIGHT: usize = 480;
@@ -89,18 +88,11 @@ pub fn get() -> Option<&'static Locked<Vga<'static>>> {
 pub fn initialize(frame_buffer: *mut u8, info: FrameBufferInfo) {
         let frame_buffer = frame_buffer as *mut Pixel;
         VGA.get_or_init(|| { Locked::new(Vga::from_framebuffer(unsafe {core::slice::from_raw_parts_mut(frame_buffer, 640 * 480)}, info))});
-        // BACK_BUFFER.init_once(|| {
-        //     Locked::new([0; BUFFER_HEIGHT * BUFFER_WIDTH * BYTES_PER_PIXEL])
-        // });
 }
 
 pub struct Vga<'fb> {
     framebuffer_front: &'fb mut [graphics_2d::Pixel],
-    framebuffer_back: Option<&'fb mut [u8]>,
     info: FrameBufferInfo,
-    /// How Many Bytes Do We Need To Skip To Get To The Next Pixel.
-    pixel_stride: usize,
-    row_stride: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -173,14 +165,9 @@ impl<'fb> Vga<'fb> {
 
     pub fn from_framebuffer(framebuffer: &'fb mut [Pixel], info: FrameBufferInfo) -> Self {
         let buffer = framebuffer;
-        let pixel_stride = info.bytes_per_pixel;
-        let row_stride = info.stride;
         Self {
             framebuffer_front: buffer,
-            framebuffer_back: None,
             info,
-            pixel_stride,
-            row_stride,
         }
     }
 
@@ -197,12 +184,12 @@ impl<'fb> Vga<'fb> {
     pub fn write_pixel(&mut self, x: usize, y: usize, color: Pixel) {
         let offset = self.pixel_offset(x, y);
         let p_start = offset;
-        let p_end = p_start + self.pixel_stride;
+        let p_end = p_start + self.info.bytes_per_pixel;
 
         if p_end >= self.framebuffer_front.len() || p_start >= self.framebuffer_front.len() {return;}
         {
             //let mut backbuffer = BACK_BUFFER.get().unwrap().lock();
-            self.framebuffer_front[offset];
+            self.framebuffer_front[offset] = color;
 
             let _ = unsafe {
                 core::ptr::read_volatile(&self.framebuffer_front[offset]) 
@@ -266,7 +253,7 @@ impl<'fb> Vga<'fb> {
 
     pub fn line_low(&mut self, color: Pixel, a: (isize, isize), b: (isize, isize)) {
         let mut dy = a.1 - b.1;
-        let mut dx = a.0 - a.0;
+        let dx = a.0 - a.0;
 
         let mut yi = 0;
 
@@ -275,23 +262,23 @@ impl<'fb> Vga<'fb> {
             dy = -dy;
         }
 
-        let mut D = (2 * dy) - dx;
+        let mut d = (2 * dy) - dx;
         let mut y = a.1;
 
         for x in a.0..b.0 {
             self.write_pixel(x.abs() as usize, y.abs() as usize, color);
 
-            if D > 0 {
+            if d > 0 {
                 y += yi;
-                D += 2 * (dx - dy)
+                d += 2 * (dx - dy)
             } else {
-                D += 2 * dy;
+                d += 2 * dy;
             }
         }
     }
 
     pub fn line_high(&mut self, color: Pixel, a: (isize, isize), b: (isize, isize)) {
-        let mut dy = a.1 - b.1;
+        let dy = a.1 - b.1;
         let mut dx = a.0 - a.0;
 
         let mut xi = 0;
@@ -301,17 +288,17 @@ impl<'fb> Vga<'fb> {
             dx = -dx;
         }
 
-        let mut D = (2 * dy) - dx;
+        let mut d = (2 * dy) - dx;
         let mut x = a.1;
 
         for y in a.1..b.1 {
             self.write_pixel(x.abs() as usize, y.abs() as usize, color);
 
-            if D > 0 {
+            if d > 0 {
                 x += xi;
-                D += 2 * (dy - dx)
+                d += 2 * (dy - dx)
             } else {
-                D += 2 * dx;
+                d += 2 * dx;
             }
         }
     }

@@ -1,6 +1,6 @@
 use font8x8::UnicodeFonts;
 
-use crate::{vga, fonts, pit};
+use crate::{fonts, pit, vga};
 
 const HEIGHT: usize = 480;
 const WIDTH: usize = 640;
@@ -8,9 +8,10 @@ const WIDTH: usize = 640;
 static mut VBLANK: bool = false;
 
 pub fn vblank() {
-    unsafe {VBLANK = true;}
+    unsafe {
+        VBLANK = true;
+    }
 }
-
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -24,20 +25,20 @@ pub struct Pixel {
 impl Pixel {
     pub const fn hex(c: u32) -> Pixel {
         Self {
-            red:   ((c & 0xFF0000) >> 16) as u8,
-            green: ((c & 0x00FF00) >> 8 ) as u8,
-            blue:  ((c & 0x0000FF) >> 0 ) as u8,
-            alpha: 255
+            red: ((c & 0xFF0000) >> 16) as u8,
+            green: ((c & 0x00FF00) >> 8) as u8,
+            blue: ((c & 0x0000FF) >> 0) as u8,
+            alpha: 255,
         }
     }
 }
 
+#[repr(transparent)]
 pub struct Frame {
     pixels: [Pixel; HEIGHT * WIDTH],
 }
 
 impl Frame {
-
     pub fn shift_up(&mut self, amount: usize) {
         for y in amount..HEIGHT {
             for x in 0..WIDTH {
@@ -48,29 +49,30 @@ impl Frame {
 
         for y in HEIGHT - amount..HEIGHT {
             for x in 0..WIDTH {
-                self.write_pixel(x, y, Pixel::hex(0x000000));
+                self.write_pixel(x, y, Pixel::hex(0x0000FF));
             }
         }
     }
-    
+
     pub fn clear(&mut self, pixel: Pixel) {
         self.pixels.fill(pixel);
     }
 
     pub const fn new() -> Frame {
         Frame {
-            pixels: [Pixel::hex(0xFFFFFF); HEIGHT * WIDTH],
+            pixels: [Pixel::hex(0x0000FF); HEIGHT * WIDTH],
         }
     }
     #[inline(always)]
     pub fn swap(&self) {
-        
         pit::sync();
 
         crate::sprint!("[FrameBuffer]: Swapping Frame Buffer.\n");
 
         vga::set_pixels(&self.pixels);
-        unsafe {VBLANK = false;}
+        unsafe {
+            VBLANK = false;
+        }
     }
 
     #[inline(always)]
@@ -98,15 +100,11 @@ impl Frame {
         }
     }
 
-    pub fn draw_char(&mut self, 
-        x: usize, y: usize,
-        chr: char,
-        fg: Pixel, bg: Pixel )
-    {
-
-
+    pub fn draw_char(&mut self, x: usize, y: usize, chr: char, fg: Pixel, bg: Pixel) {
         let font = if chr >= ' ' {
-            fonts::BASIC_FONTS.get(chr).unwrap_or(fonts::UNICODE_REPLACEMENT)
+            fonts::BASIC_FONTS
+                .get(chr)
+                .unwrap_or(fonts::UNICODE_REPLACEMENT)
         } else if chr == '\n' {
             fonts::NEW_LINE_PRINTABLE
         } else if chr == '\0' {

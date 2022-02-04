@@ -70,22 +70,17 @@ pub fn pause() {
     x64::instructions::interrupts::enable_and_hlt();
 }
 
-
 #[cfg(feature = "breakpoints")]
 #[macro_export]
 macro_rules! breakpoint {
     () => {
         $crate::sprint!("Breakpoint @ {}:{}:{}", file!(), line!(), column!());
-        $crate::arch::x64::instructions::interrupts::int3();   
+        $crate::arch::x64::instructions::interrupts::int3();
     };
 }
-
-
-
 
 #[cfg(not(feature = "breakpoints"))]
 #[macro_export]
 macro_rules! breakpoint {
-    () => { 
-    };
+    () => {};
 }

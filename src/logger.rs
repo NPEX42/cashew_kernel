@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! klog {
     ($fmt:expr, $($args:tt)*) => {

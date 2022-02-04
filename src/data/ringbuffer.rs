@@ -29,26 +29,20 @@ impl<T: Default + Copy> RingBuffer<T> {
             None
         };
 
-        
-
         item
     }
 
     pub fn write(&mut self, item: T) -> bool {
         klog!("Write Index: {}\n", self.write_index);
         if !self.items[self.write_index].0 {
-            
             self.items[self.write_index].0 = true;
             self.items[self.write_index].1 = item;
 
             self.write_index = self.write_index + 1;
             self.write_index = self.write_index % MAX_ITEMS;
         } else {
-            
             return false;
         }
-
-        
 
         return true;
     }

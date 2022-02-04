@@ -3,8 +3,7 @@ use std::{
     process::Command,
 };
 
-const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio"];
-
+const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "128M"];
 
 pub fn main() {
     let mut args = std::env::args().skip(1); // skip executable name
@@ -35,6 +34,8 @@ pub fn main() {
         .arg(format!("format=raw,file={}", bios.display()));
     run_cmd.args(RUN_ARGS);
 
+    println!("{:?}", run_cmd.get_args());
+
     let exit_status = run_cmd.status().unwrap();
     if !exit_status.success() {
         std::process::exit(exit_status.code().unwrap_or(1));
@@ -48,19 +49,13 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
     let mut build_cmd = Command::new(env!("CARGO"));
     build_cmd.current_dir(bootloader_manifest.parent().unwrap());
     build_cmd.arg("builder");
-    build_cmd
-        .arg("--kernel-manifest")
-        .arg(&kernel_manifest);
+    build_cmd.arg("--kernel-manifest").arg(&kernel_manifest);
     build_cmd.arg("--kernel-binary").arg(&kernel_bin);
     build_cmd
         .arg("--target-dir")
         .arg(kernel_manifest.parent().unwrap().join("target"));
-    build_cmd
-        .arg("--out-dir")
-        .arg(kernel_bin.parent().unwrap());
+    build_cmd.arg("--out-dir").arg(kernel_bin.parent().unwrap());
     //build_cmd.arg("--quiet");
-
-    
 
     if !build_cmd.status().unwrap().success() {
         panic!("build failed");
@@ -81,4 +76,3 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
     }
     disk_image
 }
-

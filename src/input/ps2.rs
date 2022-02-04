@@ -1,16 +1,16 @@
-
-
 use core::fmt::Display;
 
-use x64::instructions::{port::{PortReadOnly, PortWriteOnly, Port}};
+use x64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
-use crate::{arch::{self, *}, sprint};
+use crate::{
+    arch::{self, *},
+    sprint,
+};
 
-const PS2_DATA:     u16 =   0x60;
-const PS2_COMMAND:  u16 =   0x64;
+const PS2_DATA: u16 = 0x60;
+const PS2_COMMAND: u16 = 0x64;
 
 pub type PS2Result<T> = Result<T, &'static str>;
-
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -31,7 +31,7 @@ pub enum Command {
 
     WritePort1 = 0xD2,
     WritePort2 = 0xD4,
-    ReadPort2  = 0xD3,  
+    ReadPort2 = 0xD3,
 
     SelfTest = 0xAA,
 }
@@ -48,15 +48,11 @@ impl Into<usize> for Command {
     }
 }
 
-
-
-
-
 pub struct PS2Controller {
     status: PortReadOnly<u8>,
     command: PortWriteOnly<u8>,
 
-    data: Port<u8>
+    data: Port<u8>,
 }
 
 impl PS2Controller {
@@ -70,24 +66,18 @@ impl PS2Controller {
     }
 
     pub fn status(&mut self) -> Status {
-        unsafe {
-            Status::from(self.status.read())
-        }
+        unsafe { Status::from(self.status.read()) }
     }
 
     pub fn write_data(&mut self, data: u8) -> PS2Result<()> {
         self.wait_for_write()?;
-            unsafe {
-                self.data.write(data)
-            }
+        unsafe { self.data.write(data) }
         Ok(())
     }
 
     pub fn read_data(&mut self) -> PS2Result<u8> {
         self.wait_for_read()?;
-            unsafe {
-                Ok(self.data.read())
-            }
+        unsafe { Ok(self.data.read()) }
     }
 
     pub fn input_ready(&mut self) -> bool {
@@ -99,12 +89,9 @@ impl PS2Controller {
     }
 
     pub fn command(&mut self, cmd: Command) -> PS2Result<()> {
-
         self.wait_for_write()?;
-            unsafe {
-                self.command.write(cmd as u8)
-            }
-            Ok(())
+        unsafe { self.command.write(cmd as u8) }
+        Ok(())
     }
 
     pub fn wait_for_write(&mut self) -> PS2Result<()> {
@@ -118,7 +105,9 @@ impl PS2Controller {
 
     pub fn wait_on_status_set(&mut self, flag: StatusFlags) -> PS2Result<()> {
         for _ in 0..3 {
-            if self.status().is_set(flag) {return Ok(())};
+            if self.status().is_set(flag) {
+                return Ok(());
+            };
             spin();
         }
         Err("Status Set Timeout")
@@ -126,7 +115,9 @@ impl PS2Controller {
 
     pub fn wait_on_status_clear(&mut self, flag: StatusFlags) -> PS2Result<()> {
         for _ in 0..3 {
-            if self.status().is_clear(flag) {return Ok(())};
+            if self.status().is_clear(flag) {
+                return Ok(());
+            };
             spin();
         }
         Err("Status Clear Timeout")
@@ -139,14 +130,14 @@ impl PS2Controller {
         sprint!("[PS/2]: Disabling Devices\n");
         self.command(Command::DisablePort1)?;
         self.command(Command::DisablePort2)?;
-        
 
         // Step 4 - Flush Output Buffer
         sprint!("[PS/2]: Flushing Output Buffer\n");
-        #[allow(unused_must_use)] {
+        #[allow(unused_must_use)]
+        {
             self.read_data();
         }
-        
+
         // Step 5 - Disable Port IRQs & Translation
         sprint!("[PS/2]: Disabling IRQs & Translation\n");
         self.command(Command::ReadConfig)?;
@@ -176,9 +167,6 @@ impl PS2Controller {
 
         arch::enable_interrupts();
 
-
-
-        
         Ok(())
     }
 
@@ -187,7 +175,7 @@ impl PS2Controller {
         self.read_data()
     }
 
-    pub fn write_port_2(&mut self,data: u8) -> PS2Result<()> {
+    pub fn write_port_2(&mut self, data: u8) -> PS2Result<()> {
         self.command(Command::WritePort2)?;
         self.write_data(data)
     }
@@ -208,24 +196,22 @@ impl PS2Controller {
 #[derive(Debug, Clone, Copy)]
 pub enum StatusFlags {
     OutputBufferFull = 1 << 0,
-    InputBufferFull  = 1 << 1,
-    SystemFlag       = 1 << 2,
-    ControllerData   = 1 << 3,
-    KeyboardLock     = 1 << 4,
-    RXTimeout        = 1 << 5,
-    TimeOutError     = 1 << 6,
-    ParityError      = 1 << 7,
+    InputBufferFull = 1 << 1,
+    SystemFlag = 1 << 2,
+    ControllerData = 1 << 3,
+    KeyboardLock = 1 << 4,
+    RXTimeout = 1 << 5,
+    TimeOutError = 1 << 6,
+    ParityError = 1 << 7,
 }
 
-
-
 pub struct Status {
-    status: u8
+    status: u8,
 }
 
 impl Status {
     pub fn from(flags: u8) -> Self {
-        Self {status: flags}
+        Self { status: flags }
     }
 
     pub fn is_set(&self, flag: StatusFlags) -> bool {
@@ -240,30 +226,29 @@ impl Status {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 pub enum ConfigFlags {
-    Port1IrqEnabled   = 1 << 0,
-    Port2IrqEnabled   = 1 << 1,
-    PassedPost        = 1 << 2,
-    SBZ               = 1 << 3,
+    Port1IrqEnabled = 1 << 0,
+    Port2IrqEnabled = 1 << 1,
+    PassedPost = 1 << 2,
+    SBZ = 1 << 3,
     Port1ClockDisable = 1 << 4,
     Port2ClockDisable = 1 << 5,
-    Port1TranslateEn  = 1 << 6,
-    MBZ               = 1 << 7,
+    Port1TranslateEn = 1 << 6,
+    MBZ = 1 << 7,
 }
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    config: u8
+    config: u8,
 }
 
 impl Config {
-
     pub fn as_u8(&self) -> u8 {
         self.config
     }
 
     pub fn from(flags: u8) -> Self {
-        Self {config: flags}
+        Self { config: flags }
     }
 
     pub fn is_set(&self, flag: ConfigFlags) -> bool {
@@ -299,12 +284,24 @@ impl Display for Config {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let bits = self.bits();
 
-        if bits[1] {write!(f, "TRANSLATE | ")   ?};
-        if bits[2] {write!(f, "PORT 2 CLK | ")  ?};
-        if bits[3] {write!(f, "PORT 1 CLK | ")  ?};
-        if bits[5] {write!(f, "PASSED POST | ") ?};
-        if bits[6] {write!(f, "PORT 2 IRQ | ")  ?};
-        if bits[7] {write!(f, "PORT 1 IRQ")     ?};
+        if bits[1] {
+            write!(f, "TRANSLATE | ")?
+        };
+        if bits[2] {
+            write!(f, "PORT 2 CLK | ")?
+        };
+        if bits[3] {
+            write!(f, "PORT 1 CLK | ")?
+        };
+        if bits[5] {
+            write!(f, "PASSED POST | ")?
+        };
+        if bits[6] {
+            write!(f, "PORT 2 IRQ | ")?
+        };
+        if bits[7] {
+            write!(f, "PORT 1 IRQ")?
+        };
         write!(f, "")
     }
 }

@@ -1,13 +1,13 @@
 use spinning_top::{Spinlock, SpinlockGuard};
 
 pub struct Locked<T> {
-    item: Spinlock<T>
+    item: Spinlock<T>,
 }
 
 impl<T> Locked<T> {
     pub fn new(item: T) -> Self {
         Self {
-            item: Spinlock::new(item)
+            item: Spinlock::new(item),
         }
     }
 
@@ -24,4 +24,3 @@ impl<T> Locked<T> {
 
 unsafe impl<T> Send for Locked<T> {}
 unsafe impl<T> Sync for Locked<T> {}
-

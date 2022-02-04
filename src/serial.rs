@@ -1,8 +1,7 @@
-use core::{fmt::{Arguments, Write}};
+use core::fmt::{Arguments, Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use uart_16550::SerialPort;
-
 
 const COMM0_ADDR: u16 = 0x3F8;
 

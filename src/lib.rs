@@ -3,25 +3,34 @@
 #![feature(abi_x86_interrupt)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
+#![feature(alloc_error_handler)]
+#![feature(allocator_api)]
 
 use core::panic::PanicInfo;
 
-pub mod vga;
-pub mod logger;
-pub mod locked;
-pub mod serial;
-pub mod fonts;
-pub mod terminal;
+pub mod arch;
+pub mod ata;
 pub mod colors;
-pub mod pit;
+pub mod data;
+pub mod device;
+pub mod fonts;
+pub mod fuse;
 pub mod graphics_2d;
 pub mod input;
-pub mod data;
-pub mod arch;
+pub mod locked;
+pub mod logger;
+pub mod mem;
+pub mod pit;
+pub mod serial;
+pub mod terminal;
+pub mod vga;
+
+extern crate alloc;
+
+pub use alloc::*;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-
     sprint!("Panic: {}\n", info);
     //kerr!("== Kernel Panic ==\n{}", info);
     loop {}
@@ -32,4 +41,13 @@ pub fn test_runner(tests: &[&dyn Fn()]) {
     for test in tests {
         test();
     }
+}
+
+#[alloc_error_handler]
+fn alloc_error(layout: alloc::alloc::Layout) -> ! {
+    panic!(
+        "Allocation Error: Unable To Allocate {} Bytes (Align: {})",
+        layout.size(),
+        layout.align()
+    );
 }

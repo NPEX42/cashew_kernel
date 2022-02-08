@@ -29,6 +29,7 @@ pub enum ExitCode {
 
 
 pub fn exec(cmd: &str) -> ExitCode {
+    if cmd.is_empty() {return ExitCode::Ok;}
     let parts: ShellArgs = cmd.to_string().split_ascii_whitespace().map(|s| {s.to_string()}).collect::<Vec<String>>();
     let ec = if let Some(main) = unsafe { PROGS.get(&parts[0]) } {
         main(parts)

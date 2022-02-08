@@ -2,6 +2,7 @@ use alloc::string::String;
 
 use crate::sprint;
 
+/// Default Bucket Size, Size - 2KB
 pub const BUCKET_COUNT: usize = 256;
 
 pub struct HashMap<V: Copy>  where V: core::marker::Copy {

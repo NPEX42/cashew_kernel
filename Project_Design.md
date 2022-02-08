@@ -22,9 +22,14 @@
 ### v0.3.0 - User Input
 
 - [x] - PS/2 Keyboard Support
-- [ ] - Simple Shell
+- [x] - Simple Shell
 
 ### v0.4.0 - Disk I/O
 - [x] - Block Device Abstraction
 - [x] - ATA Disk Detection / Identification
 - [x] - Block Reading / Writing
+
+### v0.5.0 - ELF Loading
+- [ ] - ELF Parser
+- [ ] - Page Allocation
+- [ ] - Section Loading

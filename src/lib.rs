@@ -14,7 +14,6 @@ use core::panic::PanicInfo;
 pub mod arch;
 pub mod ata;
 pub mod csh;
-pub mod colors;
 pub mod data;
 pub mod device;
 pub mod fonts;

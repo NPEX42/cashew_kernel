@@ -3,11 +3,12 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(cashew_kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-
+extern crate alloc;
+use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::*;
+use cashew_kernel::{*};
 use device::*;
 use graphics_2d::*;
 use x86_64::VirtAddr;
@@ -24,17 +25,18 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         cashew_kernel::arch::initialize_interrupts();
         arch::enable_interrupts();
 
-        pit::set_frequency(0, 10000);
+        pit::set_frequency(0, 60);
 
         input::init();
         let physical_memory_offset = boot_info.physical_memory_offset.into_option().unwrap();
         let phys_mem_offset = VirtAddr::new(physical_memory_offset);
         mem::init(phys_mem_offset, &*boot_info.memory_regions);
 
-        device::mount(Device::Ata(0, 0));
+        device::mount(Device::hda());
 
-        println!("{:x?}", device::read(0));
-    }
+        csh::init();
+        csh::main(Vec::new());
+    }   
     loop {
         cashew_kernel::arch::pause();
     }

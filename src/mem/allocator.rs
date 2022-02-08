@@ -51,7 +51,7 @@ pub fn init_heap(
     }
 
     sprint!(
-        "Mapping Page ${:x} - {:4}/{:4} - {:02.2}% - {:04} KB\r",
+        "Mapping Page ${:x} - {:4}/{:4} - {:02.2}% - {:04} KB\n",
         (HEAP_SIZE + HEAP_START),
         count,
         total,

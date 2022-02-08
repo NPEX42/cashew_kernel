@@ -5,11 +5,15 @@
 #![test_runner(crate::test_runner)]
 #![feature(alloc_error_handler)]
 #![feature(allocator_api)]
+#![feature(derive_default_enum)]
+#![feature(const_btree_new)]
+#![feature(const_fn_trait_bound)]
 
 use core::panic::PanicInfo;
 
 pub mod arch;
 pub mod ata;
+pub mod csh;
 pub mod colors;
 pub mod data;
 pub mod device;
@@ -24,6 +28,7 @@ pub mod pit;
 pub mod serial;
 pub mod terminal;
 pub mod vga;
+pub mod vfs;
 
 extern crate alloc;
 

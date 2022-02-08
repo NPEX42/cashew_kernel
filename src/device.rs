@@ -1,6 +1,8 @@
+use core::ops::Range;
+
 use alloc::string::String;
 
-use crate::ata;
+use crate::{ata, sprint};
 
 pub type BlockAddr = u32;
 
@@ -10,6 +12,10 @@ static mut MOUNT: Option<Device> = None;
 pub struct DeviceInfo {
     pub blocks: usize,
     pub name: String,
+}
+
+pub enum DeviceError {
+    BufferTooSmall,
 }
 
 impl DeviceInfo {
@@ -25,10 +31,34 @@ pub trait BlockDeviceIO {
     fn read(&self, block: BlockAddr) -> Result<[u8; ata::BLOCK_SIZE], ()>;
     fn write(&mut self, block: BlockAddr, data: &[u8]) -> Result<(), ()>;
 
+    fn read_range(&self, bounds: Range<BlockAddr>, buffer: &mut [[u8; ata::BLOCK_SIZE]]) -> Result<(), ()> {
+        if buffer.len() < bounds.len() { return Err(()); }
+
+        for (index, addr) in bounds.enumerate() {
+            buffer[index] = self.read(addr)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_range(&mut self, bounds: Range<BlockAddr>, buffer: &[[u8; ata::BLOCK_SIZE]]) -> Result<(), ()> {
+        if buffer.len() < bounds.len() { return Err(()); }
+
+        for (index, addr) in bounds.enumerate() {
+            self.write(addr, &buffer[index])?;
+        }
+
+        Ok(())
+    }
+
     fn block_count(&self) -> Result<usize, ()>;
 
     fn info(&self) -> Result<DeviceInfo, ()> {
         Ok(DeviceInfo::generic_device(self.block_count()?))
+    }
+
+    fn exists(&self) -> bool {
+        self.info().is_ok()
     }
 }
 
@@ -36,7 +66,17 @@ pub enum Device {
     Ata(u8, u8),
 }
 
+impl Device {
+    pub fn hda() -> Self { Self::Ata(0,0) }
+    pub fn hdb() -> Self { Self::Ata(0,1) }
+    pub fn hdc() -> Self { Self::Ata(1,0) }
+    pub fn hdd() -> Self { Self::Ata(1,1) }
+}
+
 impl BlockDeviceIO for Device {
+
+    
+
     fn block_count(&self) -> Result<usize, ()> {
         match self {
             Device::Ata(bus, drive) => ata::get_sector_count(*bus, *drive),
@@ -70,6 +110,10 @@ impl BlockDeviceIO for Device {
 }
 
 pub fn mount(dev: Device) {
+    if !dev.exists() {
+        sprint!("[{}]: Cannot Mount Device\n", module_path!());
+        return;
+    }
     unsafe {
         MOUNT = Some(dev);
     }
@@ -102,3 +146,5 @@ pub fn info() -> Result<DeviceInfo, ()> {
 pub fn is_mounted() -> bool {
     unsafe { MOUNT.is_some() }
 }
+
+

@@ -184,6 +184,13 @@ impl TerminalWriter {
                 } else {
                     self.newline();
                 }
+            }
+            else if chr == '\r' {
+                if self.print_control {
+                    self.put_char(chr)
+                } else {
+                    self.carriage_return();
+                }
             } else {
                 self.put_char(chr)
             }
@@ -213,6 +220,10 @@ impl TerminalWriter {
             self.y = vga::screen_height() - FONT_HEIGHT;
             unsafe { &mut TERMINAL_FB }.shift_up(FONT_HEIGHT);
         }
+    }
+
+    pub fn carriage_return(&mut self) {
+        self.x = 0;
     }
 
     pub fn set_bg(&mut self, color: Pixel) {

@@ -25,6 +25,6 @@
 - [ ] - Simple Shell
 
 ### v0.4.0 - Disk I/O
-- [ ] - Block Device Abstraction
-- [ ] - ATA Disk Detection / Identification
-- [ ] - Block Reading / Writing
+- [x] - Block Device Abstraction
+- [x] - ATA Disk Detection / Identification
+- [x] - Block Reading / Writing

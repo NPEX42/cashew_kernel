@@ -165,6 +165,16 @@ impl PS2Controller {
         self.command(Command::EnablePort1)?;
         self.command(Command::EnablePort2)?;
 
+
+
+        self.command(Command::ReadConfig)?;
+        let mut cfg = Config::from(self.read_data()?);
+        cfg.set(ConfigFlags::Port1IrqEnabled);
+        cfg.set(ConfigFlags::Port2IrqEnabled);
+        cfg.set(ConfigFlags::Port1TranslateEn);
+
+        self.command(Command::WriteConfig)?;
+        self.write_data(cfg.as_u8())?;
         arch::enable_interrupts();
 
         Ok(())

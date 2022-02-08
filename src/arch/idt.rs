@@ -12,8 +12,8 @@ pub enum Interrupts {
     Timer = PIC1,
     Keyboard,
 
-    Ata_B0 = PIC1 + 14,
-    Ata_B1,
+    AtaB0 = PIC1 + 14,
+    AtaB1,
 }
 
 impl Interrupts {
@@ -37,8 +37,8 @@ lazy_static! {
         idt[Interrupts::Timer.as_usize()].set_handler_fn(timer);
         idt[Interrupts::Keyboard.as_usize()].set_handler_fn(keyboard);
 
-        idt[Interrupts::Ata_B0.as_usize()].set_handler_fn(ata0);
-        idt[Interrupts::Ata_B1.as_usize()].set_handler_fn(ata1);
+        idt[Interrupts::AtaB0.as_usize()].set_handler_fn(ata0);
+        idt[Interrupts::AtaB1.as_usize()].set_handler_fn(ata1);
 
         idt
     };
@@ -77,9 +77,9 @@ extern "x86-interrupt" fn keyboard(_: InterruptStackFrame) {
 }
 
 extern "x86-interrupt" fn ata0(_: InterruptStackFrame) {
-    pic::notify_eoi(Interrupts::Ata_B0.as_u8());
+    pic::notify_eoi(Interrupts::AtaB0.as_u8());
 }
 
 extern "x86-interrupt" fn ata1(_: InterruptStackFrame) {
-    pic::notify_eoi(Interrupts::Ata_B1.as_u8());
+    pic::notify_eoi(Interrupts::AtaB1.as_u8());
 }

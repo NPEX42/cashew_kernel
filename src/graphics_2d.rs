@@ -67,7 +67,7 @@ impl Frame {
     pub fn swap(&self) {
         pit::sync();
 
-        crate::sprint!("[FrameBuffer]: Swapping Frame Buffer.\n");
+        //crate::sprint!("[FrameBuffer]: Swapping Frame Buffer.\n");
 
         vga::set_pixels(&self.pixels);
         unsafe {

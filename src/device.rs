@@ -2,11 +2,29 @@ use core::ops::Range;
 
 use alloc::string::String;
 
-use crate::{ata, sprint};
+use crate::{ata, sprint, csh::{ShellArgs, ExitCode, ErrorCode}, println};
 
 pub type BlockAddr = u32;
 
 static mut MOUNT: Option<Device> = None;
+
+pub fn mount_main(args: ShellArgs) -> ExitCode {
+
+    if args.len() < 2 {
+        println!("Usage: {} [hda|hdb|hdc|hdd]", args[0]);
+        return ExitCode::Error(ErrorCode::Usage);
+    }
+
+    if let Some(dev) = Device::from_str(&args[1]) {
+        mount(dev)
+    } else {
+        println!("Invalid Device: '{}'", args[1]);
+        println!("Usage: {} [hda|hdb|hdc|hdd]", args[0]);
+        return ExitCode::Error(ErrorCode::Usage);
+    }
+
+    ExitCode::Ok
+}
 
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
@@ -71,6 +89,16 @@ impl Device {
     pub fn hdb() -> Self { Self::Ata(0,1) }
     pub fn hdc() -> Self { Self::Ata(1,0) }
     pub fn hdd() -> Self { Self::Ata(1,1) }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "hda" => Some(Self::hda()),
+            "hdb" => Some(Self::hdb()),
+            "hdd" => Some(Self::hdc()),
+            "hdc" => Some(Self::hdd()),
+            _ => None,
+        }
+    }
 }
 
 impl BlockDeviceIO for Device {

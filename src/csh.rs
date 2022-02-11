@@ -1,6 +1,6 @@
 use alloc::{vec::Vec, string::{String, ToString}, collections::BTreeMap};
 
-use crate::{data::{hashmap::HashMap}, input, sprint, mem, println};
+use crate::{data::{hashmap::HashMap}, input, sprint, mem, println, device};
 
 pub mod ls;
 pub mod cat;
@@ -23,8 +23,9 @@ pub fn init() -> Result<(), ()> {
     add_program("cat", cat::main)?;
     add_program("csh", main)?;
     add_program("mem", mem::csh_stats)?;
-
+    add_program("mount", device::mount_main)?;
     add_program("objdump", objdump::main)?;
+    add_program("help", help)?;
 
     Ok(())
 }
@@ -99,6 +100,14 @@ pub fn main(_: ShellArgs) -> ExitCode {
             ExitCode::Error(ec) => {println!("Command Returned Code {} ({0:#x} - {0:?})", ec.unix());}
             ExitCode::Ok => {}
         }
+    }
+
+    ExitCode::Ok
+}
+
+pub fn help(_: ShellArgs) -> ExitCode {
+    for (cmd, _) in unsafe {&PROGS} {
+        println!(" - {}", cmd);
     }
 
     ExitCode::Ok

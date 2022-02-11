@@ -11,3 +11,12 @@ pub unsafe fn execute_c(addr: VirtAddr) {
 
     (*fn_ptr)()
 }
+
+#[repr(C)]
+pub struct Registers {
+    rax: u64,
+    rbx: u64,
+    rcx: u64,
+    rdx: u64,
+    
+}

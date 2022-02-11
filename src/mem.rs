@@ -4,7 +4,7 @@ use core::{alloc::Layout, ptr::NonNull, sync::atomic::AtomicU64, ops::Add};
 use bootloader::{boot_info::{MemoryRegion, MemoryRegions}, BootInfo};
 use conquer_once::spin::OnceCell;
 use x86_64::{
-    instructions::interrupts::without_interrupts, structures::paging::{PageTable, Mapper, Size4KiB, PhysFrame, page::{self, PageRange}}, registers::control::Cr3
+    instructions::interrupts::without_interrupts, structures::paging::{PageTable, Mapper, Size4KiB, PhysFrame, page::{self, PageRange}, page_table::PageTableEntry}, registers::control::Cr3
 };
 
 pub use x86_64::VirtAddr;
@@ -213,4 +213,18 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     sprint!("Total: {:0w$} Bytes\n", total, w=width as usize);
     println!("=================");
     ExitCode::Ok
+}
+
+
+
+pub fn identity_map() -> PageTable {
+    let mut pagetable_4 = PageTable::new();
+    for entry in pagetable_4.iter_mut() {
+        let mut pagetable_3 = PageTable::new();
+        entry.set_addr(, PTFlags::PRESENT | PTFlags::WRITABLE);
+    }
+
+    
+
+    pagetable_4
 }

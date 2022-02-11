@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{*};
+use cashew_kernel::{*, csh::{ShellArgs, ExitCode}};
 use device::*;
 use graphics_2d::*;
 use x86_64::{VirtAddr, structures::paging::Size4KiB, PhysAddr};
@@ -36,8 +36,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         let phys_mem_offset = VirtAddr::new(physical_memory_offset);
         mem::setup_from(boot_info);
         mem::init(phys_mem_offset, &*boot_info.memory_regions);
-
-        device::mount(Device::hdb());
         println!("Booting Complete, Press Any Key To continue");
         input::wait_for_key();
 
@@ -48,6 +46,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         
 
         csh::init();
+        csh::exec("mount hdb");
         csh::main(Vec::new());
     }   
     loop {
@@ -67,3 +66,5 @@ pub extern "C" fn _start() -> ! {
 pub unsafe extern "C" fn userspace_prog_1() {
     asm!("nop");
 }
+
+

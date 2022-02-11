@@ -4,6 +4,8 @@ use x64::instructions::port::Port;
 
 mod idt;
 mod pic;
+mod gdt;
+pub mod cpu;
 
 pub fn initialize_interrupts() {
     idt::initialize();

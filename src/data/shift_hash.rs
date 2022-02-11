@@ -3,7 +3,7 @@
 use alloc::{string::String, vec};
 use vec::*;
 
-use crate::{csh, println, sprint};
+use crate::{csh::{*}, println, sprint};
 
 const BLOCK_SIZE: usize = 16;
 
@@ -110,10 +110,10 @@ pub fn hash_u128(data: &[u8]) -> u128 {
     result
 }
 
-pub fn main(args: Vec<String>) -> csh::ExitCode {
+pub fn main(args: Vec<String>) -> ExitCode {
     if args.len() < 3 {
-        println!("usage: {} <Size: 16, 32> <item to hash>", args[0]);
-        return csh::ExitCode::Error(1);
+        println!("usage: {} <Size: 16, 32, 64, 128> <item to hash>", args[0]);
+        return ExitCode::Error(ErrorCode::Usage);
     }
 
     let size = &args[1];
@@ -124,10 +124,10 @@ pub fn main(args: Vec<String>) -> csh::ExitCode {
         "32" =>  {hash_u32 (item.as_bytes()) as u128},
         "64" =>  {hash_u64 (item.as_bytes()) as u128},
         "128" => {hash_u128(item.as_bytes()) as u128},
-        _ => {println!("usage: {} <Size: 16, 32, 64, 128> <item to hash>", args[0]); return csh::ExitCode::Error(2)}
+        _ => {println!("usage: {} <Size: 16, 32, 64, 128> <item to hash>", args[0]); return ExitCode::Error(ErrorCode::Usage);}
     };
     let size: usize = size.parse().unwrap();
     println!("hash_u{}({}) = ${:0width$x}", size, item, hash, width = (size / 4));
 
-    csh::ExitCode::Ok
+    ExitCode::Ok
 }

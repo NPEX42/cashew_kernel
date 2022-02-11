@@ -1,7 +1,7 @@
 use alloc::string::String;
 use pc_keyboard::KeyCode::*;
 
-use crate::{pit, print};
+use crate::{pit, print, arch};
 
 pub mod keyboard;
 
@@ -49,4 +49,13 @@ pub fn prompt(prompt: &str) -> String {
     print!("{}{} \n", prompt, output);
     keyboard::clear();
     return output;
+}
+
+pub fn wait_for_key() {
+    keyboard::clear();
+    while let None = keyboard::read_char() {
+
+        pit::sleep(1);
+    }
+    keyboard::clear();
 }

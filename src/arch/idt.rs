@@ -33,6 +33,8 @@ lazy_static! {
         idt.breakpoint.set_handler_fn(breakpoint);
         idt.double_fault.set_handler_fn(double_fault);
         idt.page_fault.set_handler_fn(page_fault);
+        idt.divide_error.set_handler_fn(divide_err);
+        idt.general_protection_fault.set_handler_fn(gen_protection);
 
         idt[Interrupts::Timer.as_usize()].set_handler_fn(timer);
         idt[Interrupts::Keyboard.as_usize()].set_handler_fn(keyboard);
@@ -45,6 +47,7 @@ lazy_static! {
 }
 
 pub fn initialize() {
+    //super::gdt::init_gdt();
     IDT.load();
 }
 
@@ -58,11 +61,24 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, _: u64) -> ! 
 
 extern "x86-interrupt" fn page_fault(_: InterruptStackFrame, ec: PageFaultErrorCode) {
     sprint!(
-        "#PF - {:?} - CR2: {:x?}",
+        "#PF - {:?} - CR2: {:x?}\n",
         ec,
-        super::x64::registers::control::Cr2
+        super::x64::registers::control::Cr2::read()
+    );
+
+    loop {super::pause()}
+}
+
+extern "x86-interrupt" fn gen_protection(_: InterruptStackFrame, ec: u64) {
+    sprint!("#GP - General Protection Fault {:#016X}...\n", ec);
+}
+
+extern "x86-interrupt" fn divide_err(sf: InterruptStackFrame) {
+    sprint!(
+        "#DE - ${:016x}\n", sf.instruction_pointer
     );
 }
+
 
 extern "x86-interrupt" fn timer(_: InterruptStackFrame) {
     //crate::sprint!("Tick!\n");

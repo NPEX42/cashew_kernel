@@ -8,6 +8,7 @@
 #![feature(derive_default_enum)]
 #![feature(const_btree_new)]
 #![feature(const_fn_trait_bound)]
+#![feature(int_log)]
 
 use core::panic::PanicInfo;
 

@@ -4,5 +4,6 @@ runner = "cargo run --package build_boot --"
 [alias]
 kbuild = "build --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
 kimage = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- --no-run"
-krun = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
+krun = "run --release --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
 ktest = "test --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
+kgdb = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- --gdb"

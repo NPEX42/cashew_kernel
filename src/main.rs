@@ -1,9 +1,13 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
+#![feature(asm)]
+
 #![test_runner(cashew_kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 extern crate alloc;
+use core::arch::asm;
+
 use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
@@ -11,7 +15,7 @@ use bootloader::BootInfo;
 use cashew_kernel::{*};
 use device::*;
 use graphics_2d::*;
-use x86_64::VirtAddr;
+use x86_64::{VirtAddr, structures::paging::Size4KiB, PhysAddr};
 
 #[cfg(not(test))]
 entry_point!(kernel_main);
@@ -30,9 +34,18 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         input::init();
         let physical_memory_offset = boot_info.physical_memory_offset.into_option().unwrap();
         let phys_mem_offset = VirtAddr::new(physical_memory_offset);
+        mem::setup_from(boot_info);
         mem::init(phys_mem_offset, &*boot_info.memory_regions);
 
-        device::mount(Device::hda());
+        device::mount(Device::hdb());
+        println!("Booting Complete, Press Any Key To continue");
+        input::wait_for_key();
+
+        
+
+
+
+        
 
         csh::init();
         csh::main(Vec::new());
@@ -48,4 +61,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     test_main();
     loop {}
+}
+
+
+pub unsafe extern "C" fn userspace_prog_1() {
+    asm!("nop");
 }

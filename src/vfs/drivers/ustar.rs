@@ -1,8 +1,8 @@
 use core::{fmt::{Display}};
 
-use alloc::{string::String, vec::Vec};
+use alloc::{string::{String, ToString}, vec::Vec};
 
-use crate::{vfs::block::Block, device::{BlockAddr, self}};
+use crate::{vfs::block::Block, device::{BlockAddr, self}, sprint};
 
 #[derive(PartialEq, Debug, Eq, PartialOrd, Ord,Clone, Copy, Default,Hash)]
 #[repr(u8)]
@@ -101,6 +101,9 @@ impl FileInfo {
 
     pub fn load(addr: BlockAddr) -> Result<FileInfo, ()> {
         let info = Block::read(addr)?;
+
+        //sprint!("Loaded Block #{}\n",addr);
+
         let mut name_end = 0;
         
         for _ in 0..100 {
@@ -110,7 +113,7 @@ impl FileInfo {
         }
 
         let name = String::from(String::from_utf8_lossy(&info.data()[0..name_end].to_vec()).trim());
-        let size = String::from_utf8(info.data()[124..135].to_vec()).expect("Failed To Construct String");
+        let size = String::from_utf8(info.data()[124..135].to_vec()).unwrap_or_default();
         //sprint!("Size: '{}'\n", size);
         let size: u32 = u32::from_str_radix(&size, 8).unwrap_or(0);
         //sprint!("Size: {} Bytes\n", size);

@@ -1,13 +1,15 @@
 pub const HEAP_START: usize = 0x_000A_0000_0000;
-pub const HEAP_SIZE: usize = 1024 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 1024 * 1024 * 16; // 100 KiB
 
 // in src/allocator.rs
 
 #[global_allocator]
 static LINKED_LIST_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-use core::{alloc::Layout, panic, ptr::NonNull};
+use core::{alloc::Layout, panic, ptr::NonNull, sync::atomic::AtomicU64, cmp::Ordering};
 
+use bootloader::{BootInfo, boot_info::MemoryRegions};
+use conquer_once::spin::OnceCell;
 use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, Size4KiB},
@@ -16,12 +18,17 @@ use x86_64::{
 
 use x86_64::structures::paging::PageTableFlags as PTFlags;
 
-use crate::sprint;
+use crate::{sprint, locked::Locked, println};
+
+use super::frames::BootInfoFrameAllocator;
+
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) -> Result<(), MapToError<Size4KiB>> {
+
+    let mut memory_size = 0;
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
         let heap_end = heap_start + HEAP_SIZE - 1u64;
@@ -29,6 +36,8 @@ pub fn init_heap(
         let heap_end_page = Page::containing_address(heap_end);
         Page::range_inclusive(heap_start_page, heap_end_page)
     };
+
+    
     let mut count = 0;
     let total = HEAP_SIZE / 4096;
     for page in page_range {

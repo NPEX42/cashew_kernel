@@ -4,7 +4,7 @@ use std::{
 };
 
 const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "128M", "-hdb", "initrd.img"];
-
+const DEBUG_ARGS: &[&str] = &["-s", "-S", "-monitor", "stdio", "-hdb", "initrd.img"];
 pub fn main() {
     let mut args = std::env::args().skip(1); // skip executable name
 
@@ -15,7 +15,16 @@ pub fn main() {
     let no_boot = if let Some(arg) = args.next() {
         match arg.as_str() {
             "--no-run" => true,
-            other => panic!("unexpected argument `{}`", other),
+            _ => false,
+        }
+    } else {
+        false
+    };
+
+    let debug = if let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--gdb" => true,
+            _ => false,
         }
     } else {
         false
@@ -32,9 +41,14 @@ pub fn main() {
     run_cmd
         .arg("-drive")
         .arg(format!("format=raw,file={}", bios.display()));
-    run_cmd.args(RUN_ARGS);
 
-    println!("{:?}", run_cmd.get_args());
+    if !debug {
+        run_cmd.args(RUN_ARGS);
+    } else {
+        run_cmd.args(DEBUG_ARGS);
+    }
+
+    println!("{:#?}", run_cmd.get_args());
 
     let exit_status = run_cmd.status().unwrap();
     if !exit_status.success() {

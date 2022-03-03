@@ -1,6 +1,6 @@
 use alloc::{vec::Vec, string::{String, ToString}, collections::BTreeMap};
 
-use crate::{data::{hashmap::HashMap}, input, sprint, mem, println, device};
+use crate::{data::{hashmap::HashMap}, input, sprint, mem, println, device, time, arch};
 
 pub mod ls;
 pub mod cat;
@@ -26,6 +26,8 @@ pub fn init() -> Result<(), ()> {
     add_program("mount", device::mount_main)?;
     add_program("objdump", objdump::main)?;
     add_program("help", help)?;
+    add_program("time", time::time)?;
+    add_program("shutdown", shutdown)?;
 
     Ok(())
 }
@@ -80,6 +82,7 @@ impl ErrorCode {
 
 pub fn exec(cmd: &str) -> ExitCode {
     if cmd.is_empty() {return ExitCode::Ok}
+    if cmd == "exit" {return ExitCode::Ok}
     let parts: ShellArgs = cmd.to_string().split_ascii_whitespace().map(|s| {s.to_string()}).collect::<Vec<String>>();
     let ec = if let Some(main) = unsafe { PROGS.get(&parts[0]) } {
         main(parts)
@@ -95,9 +98,13 @@ pub fn main(_: ShellArgs) -> ExitCode {
     let mut line = String::new();
     while line != "exit".to_string() {
         line = input::prompt(">> ");
-
+        if line == "exit".to_uppercase() {break;}
         match exec(&line) {
-            ExitCode::Error(ec) => {println!("Command Returned Code {} ({0:#x} - {0:?})", ec.unix());}
+            ExitCode::Error(ec) => {
+                if ec.unix() != 127 {
+                    println!("Command Returned Code {} ({0:#x} - {0:?})", ec.unix());
+                }
+            }
             ExitCode::Ok => {}
         }
     }
@@ -110,5 +117,11 @@ pub fn help(_: ShellArgs) -> ExitCode {
         println!(" - {}", cmd);
     }
 
+    ExitCode::Ok
+}
+
+fn shutdown(_: ShellArgs) -> ExitCode {
+    crate::shutdown();
+    #[allow(unreachable_code)]
     ExitCode::Ok
 }

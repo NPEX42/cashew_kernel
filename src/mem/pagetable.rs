@@ -40,7 +40,7 @@ pub struct PageTableWrapper(paging::PageTable);
 
 impl PageTableWrapper {
     pub unsafe fn from_active() -> Self {
-        Self(*current_l4_table(PHYSICAL_OFFSET.unwrap()))
+        Self(current_l4_table(PHYSICAL_OFFSET.unwrap()).clone())
     }
 
     pub fn from(table: PageTable) -> Self {
@@ -51,7 +51,7 @@ impl PageTableWrapper {
         if self.0[index].is_unused() {return None;}
         unsafe {
             if let Ok(frame) = self[index].frame() {
-                return Some(Self::from(*pagetable_at_frame(frame)));
+                return Some(Self::from(pagetable_at_frame(frame).clone()));
             } else {
                 return None;
             }

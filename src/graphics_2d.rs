@@ -1,5 +1,7 @@
-use font8x8::UnicodeFonts;
+pub mod palletes;
 
+use font8x8::UnicodeFonts;
+use core::ops::*;
 use crate::{fonts, pit, vga};
 
 const HEIGHT: usize = 480;
@@ -31,6 +33,23 @@ impl Pixel {
             alpha: 255,
         }
     }
+
+    pub const fn argb(a: u8, r: u8, g: u8, b: u8) -> Self {
+        Self {
+            alpha: a,
+            blue: b,
+            green: g,
+            red: r
+        }
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        let r = (self.red as u32) << 16;
+        let g = (self.green as u32) << 8;
+        let b = (self.blue as u32) << 0;
+
+        r | g | b
+    } 
 }
 
 #[repr(transparent)]
@@ -124,5 +143,35 @@ impl Frame {
                 }
             }
         }
+    }
+}
+
+
+impl BitOr for Pixel {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self::hex(self.as_u32() | rhs.as_u32())
+    }
+}
+
+impl BitAnd for Pixel {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self::hex(self.as_u32() & rhs.as_u32())
+    }
+}
+
+impl Div<u8> for Pixel {
+    type Output = Self;
+
+    fn div(self, rhs: u8) -> Self::Output {
+        let r = self.red / rhs;
+        let g = self.green / rhs;
+        let b = self.blue / rhs;
+        let a = self.alpha / rhs;
+
+        Pixel::argb(a, r, g, b)
     }
 }

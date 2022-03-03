@@ -27,17 +27,25 @@ pub mod mem;
 pub mod pit;
 pub mod serial;
 pub mod terminal;
+pub mod time;
 pub mod vga;
 pub mod vfs;
+
+
+pub mod wasi;
+pub mod simple_vm;
 
 extern crate alloc;
 
 pub use alloc::*;
+use arch::cmos;
+use bootloader::BootInfo;
+use x86_64::VirtAddr;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     sprint!("Panic: {}\n", info);
-    //kerr!("== Kernel Panic ==\n{}", info);
+    kerr!("== Kernel Panic ==\n{}", info);
     loop {}
 }
 
@@ -55,4 +63,53 @@ fn alloc_error(layout: alloc::alloc::Layout) -> ! {
         layout.size(),
         layout.align()
     );
+}
+
+
+pub fn boot(info: &'static mut BootInfo) {
+    if let Some(fb) = info.framebuffer.as_mut() {
+        vga::initialize(fb.buffer_mut().as_mut_ptr(), fb.info());
+        terminal::initialize();
+        arch::initialize_interrupts();
+        arch::enable_interrupts();
+        pit::set_frequency(0, 60);
+
+        input::init();
+        let physical_memory_offset = info.physical_memory_offset.into_option().unwrap();
+        let phys_mem_offset = VirtAddr::new(physical_memory_offset);
+        mem::allocator::BitmapAllocator::init(info);
+        mem::setup_from(info);
+        mem::init(phys_mem_offset, &*info.memory_regions);
+
+        
+
+        cmos::CMOS::new().enable_periodic_interrupt();
+        time::set_rate(3);
+
+        println!("Main Processor: '{:?}' - SSE {} - SSE2 {} - AVX {}", arch::cpu::vendor_info(),
+            arch::cpu::supports_sse(),
+            arch::cpu::supports_sse2(),
+            arch::cpu::supports_avx(),
+        );
+
+        if let Some(cparams) = arch::cpu::cache_params() {
+            for cache in cparams {
+                let associativity = cache.associativity();
+                let line_length = cache.coherency_line_size();
+                let level = cache.level();
+                println!("L{}-Cache: [{}:{}]", level, line_length, associativity);
+            }
+        } else {
+            println!("No Cache Detected...");
+        }
+
+    }   
+
+
+}
+
+pub fn shutdown() -> ! {
+    arch::acpi::shutdown();
+
+    loop {}
 }

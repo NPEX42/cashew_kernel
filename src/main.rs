@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{*, csh::{ShellArgs, ExitCode}};
+use cashew_kernel::{*, csh::{ShellArgs, ExitCode}, arch::{cmos, vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT}}, mem::PTFlags, vfs::drivers::disk_map::DiskMap};
 use device::*;
 use graphics_2d::*;
 use x86_64::{VirtAddr, structures::paging::Size4KiB, PhysAddr};
@@ -24,30 +24,18 @@ static mut FRAME: Frame = Frame::new();
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     if let Some(mut fb) = boot_info.framebuffer.as_mut() {
-        vga::initialize(fb.buffer_mut().as_mut_ptr(), fb.info());
-        terminal::initialize();
-        cashew_kernel::arch::initialize_interrupts();
-        arch::enable_interrupts();
+        cashew_kernel::boot(boot_info);
 
-        pit::set_frequency(0, 60);
+        sprint!("RTC: {:?} - (Unix: {:?}) - RTC Uptime: {}\n", cmos::CMOS::new().rtc(), time::realtime(), time::seconds());
 
-        input::init();
-        let physical_memory_offset = boot_info.physical_memory_offset.into_option().unwrap();
-        let phys_mem_offset = VirtAddr::new(physical_memory_offset);
-        mem::setup_from(boot_info);
-        mem::init(phys_mem_offset, &*boot_info.memory_regions);
+
+
         println!("Booting Complete, Press Any Key To continue");
-        input::wait_for_key();
-
-        
-
-
-
-        
 
         csh::init();
         csh::exec("mount hdb");
         csh::main(Vec::new());
+        cashew_kernel::shutdown();
     }   
     loop {
         cashew_kernel::arch::pause();

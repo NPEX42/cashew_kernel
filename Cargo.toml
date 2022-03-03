@@ -18,7 +18,10 @@ map-physical-memory = true
 physical-memory-offset = 211106232532992 # 0xC000_0000_0000
 
 [dependencies]
-
+acpi = "4.1.0"
+aml = "0.16.1"
+raw-cpuid = "10.2.0"
+rsdp = "2.0.0"
 x86_64 = "0.14.7"
 spin = "0.9.0"
 uart_16550 = "0.2.15"

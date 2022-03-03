@@ -3,7 +3,7 @@ use std::{
     process::Command,
 };
 
-const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "128M", "-hdb", "initrd.img"];
+const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "256M", "-hdb", "initrd.img"];
 const DEBUG_ARGS: &[&str] = &["-s", "-S", "-monitor", "stdio", "-hdb", "initrd.img"];
 pub fn main() {
     let mut args = std::env::args().skip(1); // skip executable name

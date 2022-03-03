@@ -5,37 +5,23 @@ use crate::device::BlockAddr;
 pub mod block;
 pub mod drivers;
 
+pub type FileDesc = u16;
 
+pub const FD_STDOUT: FileDesc = 1;
+pub const FD_STDIN: FileDesc = 0;
+pub const FD_STDERR: FileDesc = 2;
 
-pub trait FileSystem {
-    fn root<'a>(&self) -> &'a dyn DirIO;
-
-
+pub enum SeekPos {
+    FromStart(usize),
+    FromEnd(usize),
+    FromCurrent(usize),
+    None
 }
 
-pub trait FileIO {
-    fn name(&self) -> &str;
-    fn size(&self) -> &str;
-
-    fn write(&mut self, data: &[u8]);
-    fn append(&mut self, data: &[u8]);
-    fn read(&mut self, buffer: &mut [u8]) -> usize;
-    fn read_all(&mut self) -> Vec<u8>;
-
-    fn close(&mut self);
-    fn erase(&mut self);
-
-    fn head(&mut self) -> BlockAddr;
-    fn set_head(&mut self, addr: BlockAddr);
-}
-
-pub trait DirIO {
-    fn create_file(&mut self, name: &str);
-    fn open_file(&mut self, name: &str, mode: u8) -> bool;
-    fn delete_file(&mut self, name: &str) -> bool;
-
-    fn name(&self) -> &str;
-    fn size(&self) -> usize;
-    fn erase(&mut self);
-    fn erase_rec(&mut self);
+pub trait VirtualFileSystem {
+    fn open(name: &str, flags: &str) -> Option<FileDesc>;
+    fn read(fd: FileDesc, buffer: &mut [u8]) -> usize;
+    fn write(fd: FileDesc, buffer: &[u8]) -> usize;
+    fn seek(fd: FileDesc, pos: SeekPos) -> usize;
+    fn close(fd: FileDesc) -> Result<(), ()>;
 }

@@ -35,8 +35,7 @@ macro_rules! kerr {
     ($fmt:expr, $($args:tt)*) => {
         let old_fg_color = $crate::terminal::get_fg();
         let old_bg_color = $crate::terminal::get_bg();
-        $crate::terminal::set_fg(C64_PALLETE[2]);
-        $crate::terminal::set_bg(C64_PALLETE[10]);
+
         $crate::terminal::write_fmt(format_args!(concat!("[ERROR]: ", $fmt), $($args)*));
         $crate::terminal::set_fg(old_fg_color);
         $crate::terminal::set_bg(old_bg_color);

@@ -150,8 +150,6 @@ impl FileInfo {
     
 }
 
-
-
 impl Display for FileInfo {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:>4} - {}", self.size(), self.name())

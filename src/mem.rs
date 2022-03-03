@@ -4,7 +4,7 @@ use core::{alloc::Layout, ptr::NonNull, sync::atomic::AtomicU64, ops::Add};
 use bootloader::{boot_info::{MemoryRegion, MemoryRegions}, BootInfo};
 use conquer_once::spin::OnceCell;
 use x86_64::{
-    instructions::interrupts::without_interrupts, structures::paging::{PageTable, Mapper, Size4KiB, PhysFrame, page::{self, PageRange}, page_table::PageTableEntry}, registers::control::Cr3
+    instructions::interrupts::without_interrupts, structures::paging::{PageTable, Mapper, Size4KiB, PhysFrame, page::{self, PageRange}, page_table::PageTableEntry, FrameAllocator}, registers::control::Cr3
 };
 
 pub use x86_64::VirtAddr;
@@ -22,9 +22,9 @@ static mut PHYSICAL_OFFSET: Option<VirtAddr> = None;
 pub static mut MEMORY_MAP: Option<&MemoryRegions> = None;
 pub static MEMORY_SIZE: AtomicU64 = AtomicU64::new(0);
 
-use crate::{locked::Locked, println, sprint, pit, csh::{ShellArgs, ExitCode}, mem::allocator::HEAP_SIZE};
+use crate::{locked::Locked, println, sprint, pit, csh::{ShellArgs, ExitCode}, mem::allocator::HEAP_SIZE, klog};
 
-use self::frames::BootInfoFrameAllocator;
+use self::{frames::BootInfoFrameAllocator, allocator::BitmapAllocator};
 
 static PAGE_TABLE: OnceCell<Locked<OffsetPageTable>> = OnceCell::uninit();
 
@@ -127,13 +127,14 @@ pub fn debug_print_pagetables() {
                     for (i, l2_entry) in pt2.iter().enumerate() {
                         if !l2_entry.is_unused() {
                             sprint!("--L2 Entry {}: {:x} - {:?}\n", i, l2_entry.addr(), l2_entry.flags());
-                            //pit::sleep(5);
+                           
                             if l2_entry.flags().contains(PTFlags::HUGE_PAGE) {continue;}
 
                             let pt1 = pagetable_at_frame(l2_entry.frame().unwrap());
                             for (i, l1_entry) in pt1.iter().enumerate() {
                                 if !l1_entry.is_unused() {
-                                    sprint!("---L1 Entry {}: {:x} --> {:x?}\n", i, l1_entry.addr(), phys_to_virt(l1_entry.addr()));
+                                    sprint!("---L1 Entry {}: {:x?} --> {:x}\n", i, phys_to_virt(l1_entry.addr()), (l1_entry.addr()));
+                                    pit::sleep(5);
                                 }
                             }
                         }
@@ -145,6 +146,29 @@ pub fn debug_print_pagetables() {
         }
     }
 
+}
+
+
+pub fn debug_simple_mapping_exc(start: VirtAddr, end: VirtAddr) {
+    for page in Page::<Size4KiB>::range(Page::containing_address(start), Page::containing_address(end)) {
+        if is_mapped(page.start_address()) {
+            let v = page.start_address();
+            let phys = virt_to_phys(v).unwrap();
+            
+            let p4 = usize::from(page.p4_index());
+            let p3 = usize::from(page.p3_index());
+            let p2 = usize::from(page.p2_index());
+            let p1 = usize::from(page.p1_index());
+
+            sprint!("Map[{:03}][{:03}][{:03}][{:03}] = {:#x}\n",
+                p4,
+                p3,
+                p2,
+                p1,
+                phys
+            )
+        }
+    }   
 }
 
 
@@ -167,7 +191,27 @@ pub fn map_virt_to_phys(virt: VirtAddr, phys: PhysAddr, flags: PTFlags) {
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&*MEMORY_MAP.unwrap()) };
     let frame: PhysFrame<Size4KiB> = PhysFrame::containing_address(phys);
     let page: Page<Size4KiB> = Page::containing_address(virt);
-    unsafe { mapper.map_to(page, frame, flags, &mut frame_allocator).expect("Failed To Create Mapping").flush() };
+    unsafe { match  mapper.map_to(page, frame, flags, &mut frame_allocator) {
+        Ok(flsh) => flsh.flush(),
+        Err(ec) => {
+            match ec {
+                x86_64::structures::paging::mapper::MapToError::FrameAllocationFailed => panic!("Failed To Allocate Frame!"),
+                x86_64::structures::paging::mapper::MapToError::ParentEntryHugePage => {klog!("Huge Page Already Mapped...\n")},
+                x86_64::structures::paging::mapper::MapToError::PageAlreadyMapped(frame) => panic!("Frame {:?} Is Already Mapped!", frame),
+            }
+        } }
+    }
+}
+
+pub fn map_virt(virt: VirtAddr, flags: PTFlags) {
+    let mut frame_allocator =  unsafe { BootInfoFrameAllocator::init(&*MEMORY_MAP.unwrap()) };
+    if let Some(frame) = BitmapAllocator::next_free() {
+        klog!("Mapping ${:x} --> ${:x}\n", virt, frame.start_address() + (virt.as_u64() & 0xFFF));
+        map_virt_to_phys(virt, frame.start_address(), flags);
+    } else {
+        panic!("Out Of Physical Memory");
+    }
+
 }
 
 pub fn map_contiguous(size: usize, virt: VirtAddr, phys: PhysAddr, flags: PTFlags) {
@@ -191,7 +235,9 @@ pub fn map_contiguous(size: usize, virt: VirtAddr, phys: PhysAddr, flags: PTFlag
 
 }
 
-
+pub fn is_mapped(virt: VirtAddr) -> bool {
+    virt_to_phys(virt).is_some()
+}
 
 
 pub fn csh_stats(_: ShellArgs) -> ExitCode {
@@ -204,6 +250,8 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     width = width.max(free.log10());
     width = width.max(used.log10());
     width = width.max(total.log10());
+    unsafe {width = width.max((BitmapAllocator::free_count() as u32).log10())}
+    unsafe {width = width.max((BitmapAllocator::used_count() as u32).log10())}
     println!("Used:  {:0w$} Bytes", used, w=width as usize);
     println!("Free:  {:0w$} Bytes", free, w=width as usize);
     println!("Total: {:0w$} Bytes", total, w=width as usize);
@@ -211,20 +259,35 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     sprint!("Used:  {:0w$} Bytes\n", used, w=width as usize);
     sprint!("Free:  {:0w$} Bytes\n", free, w=width as usize);
     sprint!("Total: {:0w$} Bytes\n", total, w=width as usize);
+
+
+    println!("Pages Free: {:0w$}", BitmapAllocator::free_count(), w=width as usize);
+    println!("Pages Used: {:0w$}", BitmapAllocator::used_count(), w=width as usize);
     println!("=================");
     ExitCode::Ok
 }
 
 
 
-pub fn identity_map() -> PageTable {
-    let mut pagetable_4 = PageTable::new();
-    for entry in pagetable_4.iter_mut() {
-        let mut pagetable_3 = PageTable::new();
-        entry.set_addr(, PTFlags::PRESENT | PTFlags::WRITABLE);
-    }
+// pub fn identity_map() -> PageTable {
+//     let mut pagetable_4 = PageTable::new();
+//     for entry in pagetable_4.iter_mut() {
+//         let mut pagetable_3 = PageTable::new();
+//         entry.set_addr(, PTFlags::PRESENT | PTFlags::WRITABLE);
+//     }
 
     
 
-    pagetable_4
+//     pagetable_4
+// }
+
+
+pub unsafe fn read_mmio_u8(addr: VirtAddr) -> u8 {
+    let ptr: *const u8 = addr.as_ptr();
+    core::ptr::read_volatile(ptr)
+}
+
+pub unsafe fn write_mmio_u8(addr: VirtAddr, value: u8) {
+    let ptr: *mut u8 = addr.as_mut_ptr();
+    core::ptr::write_volatile(ptr, value)
 }

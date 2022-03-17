@@ -100,7 +100,7 @@ impl FileInfo {
     }
 
     pub fn load(addr: BlockAddr) -> Result<FileInfo, ()> {
-        let info = Block::read(addr)?;
+        let info = Block::read(addr).unwrap();
 
         //sprint!("Loaded Block #{}\n",addr);
 
@@ -123,7 +123,7 @@ impl FileInfo {
         let ty: u8 = u8::from_str_radix(&String::from_utf8_lossy(&info.data()[156..157].to_vec()), 8).unwrap_or(255);
         
         for i in 1..=block_len {
-            blocks.push(Block::read(addr + i)?);
+            blocks.push(Block::read(addr + i).unwrap());
         }
         Ok(
             Self {

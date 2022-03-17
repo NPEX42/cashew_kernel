@@ -1,8 +1,11 @@
 use core::mem::size_of;
-
+use alloc::collections::BTreeMap;
 use crate::arch::x64::instructions::port;
+use crate::device::BlockAddr;
+use crate::klog;
 use crate::pit::sleep;
 use crate::sprint;
+use crate::vfs::block::Block;
 
 use alloc::string::String;
 use bit_field::BitField;
@@ -11,6 +14,37 @@ use port::PortReadOnly as PortR;
 use port::PortWriteOnly as PortW;
 
 pub const BLOCK_SIZE: usize = 512;
+
+static mut BLOCK_CACHE: BTreeMap<(u8, u8, u32), [u8; BLOCK_SIZE]> = BTreeMap::new();
+
+
+#[allow(deprecated)]
+pub fn write_block(bus: u8, drive: u8, block: BlockAddr, data: &[u8]) -> EmptyResult {
+    unsafe {
+        let mut buf = [0; BLOCK_SIZE];
+        buf.copy_from_slice(data); 
+        BLOCK_CACHE.insert((bus, drive, block), buf);
+        write(bus, drive, block, data)?;
+        Ok(())
+    }
+}
+
+#[allow(deprecated)]
+pub fn read_block(bus: u8, drive: u8, addr: u32) -> Result<[u8; BLOCK_SIZE], ()> {
+    unsafe {
+        if BLOCK_CACHE.contains_key(&(bus, drive, addr)) {
+            klog!("Block {:?} In Cache.\n", (bus, drive, addr));
+            return Ok(*BLOCK_CACHE.get(&(bus, drive, addr)).unwrap());
+        } else {
+            let data = read(bus, drive, addr)?;
+            BLOCK_CACHE.insert((bus, drive, addr), data);
+            klog!("Block {:?} Has Been Cached.\n",  (bus, drive, addr));
+            return Ok(data);
+        }
+
+        
+    }
+}
 
 pub type EmptyResult = Result<(), ()>;
 pub type Sector = [u8; BLOCK_SIZE];
@@ -257,11 +291,15 @@ impl DiskInfo {
     }
 }
 
+#[deprecated]
+/// MARKED FOR INTERNAL USE ONLY
 pub fn read(bus: u8, drive: u8, block: u32) -> Result<Sector, ()> {
     let mut bus = get_register(bus);
     bus.read_block(drive, block)
 }
 
+#[deprecated]
+/// MARKED FOR INTERNAL USE ONLY
 pub fn write(bus: u8, drive: u8, block: u32, data: &[u8]) -> EmptyResult {
     let mut bus = get_register(bus);
     bus.write_block(drive, block, data)

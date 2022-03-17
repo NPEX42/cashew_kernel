@@ -1,9 +1,13 @@
 use std::{
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Child}, fs::{File, self}, io,
 };
 
-const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "256M", "-hdb", "initrd.img"];
+use config::Config;
+
+mod config;
+
+const RUN_ARGS: &[&str] = &["-s", "-serial", "stdio", "-m", "256M", "-hdb", "fat.img"];
 const DEBUG_ARGS: &[&str] = &["-s", "-S", "-monitor", "stdio", "-hdb", "initrd.img"];
 pub fn main() {
     let mut args = std::env::args().skip(1); // skip executable name
@@ -12,6 +16,17 @@ pub fn main() {
         let path = PathBuf::from(args.next().unwrap());
         path.canonicalize().unwrap()
     };
+
+    let manifest = {
+        let mut path = PathBuf::from(args.next().unwrap());
+        path = path.canonicalize().unwrap();
+
+        match fs::read_to_string(&path) {
+            Ok(text) => Some(text),
+            Err(err) => {println!("Failed To Open File '{}' ({})", (&path).display(), err); None},
+        }
+    };
+
     let no_boot = if let Some(arg) = args.next() {
         match arg.as_str() {
             "--no-run" => true,
@@ -24,6 +39,7 @@ pub fn main() {
     let debug = if let Some(arg) = args.next() {
         match arg.as_str() {
             "--gdb" => true,
+            "--debug" => true, 
             _ => false,
         }
     } else {
@@ -48,11 +64,10 @@ pub fn main() {
         run_cmd.args(DEBUG_ARGS);
     }
 
-    println!("{:#?}", run_cmd.get_args());
-
-    let exit_status = run_cmd.status().unwrap();
-    if !exit_status.success() {
-        std::process::exit(exit_status.code().unwrap_or(1));
+    if let Some(cfg) = manifest {
+        run_from_cfg(&cfg);
+    } else {
+        run_cmd.status();
     }
 }
 
@@ -69,7 +84,7 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
         .arg("--target-dir")
         .arg(kernel_manifest.parent().unwrap().join("target"));
     build_cmd.arg("--out-dir").arg(kernel_bin.parent().unwrap());
-    //build_cmd.arg("--quiet");
+    build_cmd.arg("--quiet");
 
     if !build_cmd.status().unwrap().success() {
         panic!("build failed");
@@ -89,4 +104,43 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
         );
     }
     disk_image
+}
+
+
+pub fn run_from_cfg_bak(cfg: &str) -> Option<io::Result<Child>> {
+    if let Ok(config) = &Config::from(cfg) {
+        let mut command = Command::new(config.runner.clone());
+        let bin = config.get_disk("boot").expect("Missing Boot Drive");
+        command.arg("-drive");
+        command.arg(format!("format=raw,file={}", bin));
+
+        if let Some(run_args) = config.run_args() {
+            command.args(run_args);
+        }
+
+        if let Some(disks) = config.get_disks() {
+            for (drive_id, file) in disks {
+                if drive_id == "boot" {continue;}
+                command.arg(format!("-{}", drive_id));
+                command.arg(file);
+            }
+        }
+
+        command.status().expect(&format!("Failed To Run {} on {}", bin, config.runner));
+
+    }
+    None
+}
+
+
+pub fn run_from_cfg(cfg: &str) -> Option<io::Result<Child>> {
+    if let Ok(config) = &Config::from(cfg) {
+
+        let mut cmd = Command::new(config.runner.clone());
+        cmd.args(config.to_args());
+
+
+        cmd.status().expect("Failed To Run...");
+    }
+    None
 }

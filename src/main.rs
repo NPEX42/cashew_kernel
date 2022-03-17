@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{*, csh::{ShellArgs, ExitCode}, arch::{cmos, vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT}}, mem::PTFlags, vfs::drivers::disk_map::DiskMap};
+use cashew_kernel::{*, csh::{ShellArgs, ExitCode}, arch::{cmos, vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT}}, mem::PTFlags, vfs::{drivers::{disk_map::DiskMap, csh_fat::{self, FAT, FileEntry, File}}, block::Block}, time::time};
 use device::*;
 use graphics_2d::*;
 use x86_64::{VirtAddr, structures::paging::Size4KiB, PhysAddr};
@@ -25,15 +25,78 @@ static mut FRAME: Frame = Frame::new();
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     if let Some(mut fb) = boot_info.framebuffer.as_mut() {
         cashew_kernel::boot(boot_info);
-
-        sprint!("RTC: {:?} - (Unix: {:?}) - RTC Uptime: {}\n", cmos::CMOS::new().rtc(), time::realtime(), time::seconds());
-
-
-
         println!("Booting Complete, Press Any Key To continue");
 
-        csh::init();
-        csh::exec("mount hdb");
+        let block_count = 1;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::read((i as u32) % 16u32);
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("1x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+        let block_count = 10;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::read((i as u32) % 16u32);
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("10x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+        let block_count = 100;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::read((i as u32) % 16u32);
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("100x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+        klog!("Write Tests ------------------");
+
+        let block_count = 1;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::empty((i as u32) % 16u32).write();
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("1x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+        let block_count = 10;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::empty((i as u32) % 16u32).write();
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("10x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+        let block_count = 100;
+        let start = time::ticks();
+        for i in 0..block_count {
+            Block::empty((i as u32) % 16u32).write();
+        }
+        let end = time::ticks();
+        let ticks = end - start;
+        let ticks_per_block = ticks as f32 / block_count as f32;
+
+        klog!("100x: {} ({} / Block)\n ", ticks, ticks_per_block );
+
+
+
         csh::main(Vec::new());
         cashew_kernel::shutdown();
     }   

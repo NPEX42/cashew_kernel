@@ -2,6 +2,8 @@ use alloc::{vec::Vec};
 
 use crate::device::BlockAddr;
 
+use self::block::Block;
+
 pub mod block;
 pub mod drivers;
 
@@ -25,3 +27,12 @@ pub trait VirtualFileSystem {
     fn seek(fd: FileDesc, pos: SeekPos) -> usize;
     fn close(fd: FileDesc) -> Result<(), ()>;
 }
+
+pub trait BlockAllocator {
+    fn allocate(&mut self) -> Option<Block>;
+    fn free(&mut self, block: u32);
+}
+
+
+
+

@@ -45,8 +45,6 @@ macro_rules! kerr {
         let old_fg_color = $crate::terminal::get_fg();
         let old_bg_color = $crate::terminal::get_bg();
         let old_color = $crate::terminal::get_fg();
-        $crate::terminal::set_fg(C64_PALLETE[2]);
-        $crate::terminal::set_bg(C64_PALLETE[10]);
         $crate::terminal::print_custom(&$crate::fonts::SAD_TRIANGLE);
         $crate::terminal::print_custom(&$crate::fonts::SAD_TRIANGLE);
         $crate::terminal::print_custom(&$crate::fonts::SAD_TRIANGLE);

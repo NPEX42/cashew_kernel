@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use alloc::string::String;
 
-use crate::{ata, sprint, csh::{ShellArgs, ExitCode, ErrorCode}, println};
+use crate::{ata, sprint, csh::{ShellArgs, ExitCode, ErrorCode}, println, vfs::block::Block};
 
 pub type BlockAddr = u32;
 
@@ -113,13 +113,13 @@ impl BlockDeviceIO for Device {
 
     fn read(&self, block: BlockAddr) -> Result<[u8; ata::BLOCK_SIZE], ()> {
         match self {
-            Device::Ata(bus, drive) => ata::read(*bus, *drive, block),
+            Device::Ata(bus, drive) => ata::read_block(*bus, *drive, block),
         }
     }
 
     fn write(&mut self, block: BlockAddr, data: &[u8]) -> Result<(), ()> {
         match self {
-            Device::Ata(bus, drive) => ata::write(*bus, *drive, block, data),
+            Device::Ata(bus, drive) => ata::write_block(*bus, *drive, block, data),
         }
     }
 
@@ -155,9 +155,27 @@ pub fn read(block: BlockAddr) -> Result<[u8; 512], ()> {
     }
 }
 
+
+pub fn read_block(block: BlockAddr) -> Result<Block, ()> {
+    if let Some(dev) = unsafe { &mut MOUNT } {
+        let data = dev.read(block)?;
+        Ok(Block::from(block, data))
+    } else {
+        Err(())
+    }
+}
+
 pub fn write(block: BlockAddr, data: &[u8]) -> Result<(), ()> {
     if let Some(dev) = unsafe { &mut MOUNT } {
         dev.write(block, data)
+    } else {
+        Err(())
+    }
+}
+
+pub fn write_block(addr: BlockAddr, block: Block) -> Result<(), ()> {
+    if let Some(dev) = unsafe { &mut MOUNT } {
+        dev.write(addr, block.data())
     } else {
         Err(())
     }

@@ -10,7 +10,7 @@ pub fn main(args: ShellArgs) -> ExitCode {
         let bytes = file.to_vec();
         let elf = Elf::from_bytes(&bytes).expect("Failed To Parse ELF File.");
         for section in elf.section_header_iter() {
-            println!("Section: '{}' - VADDR 0x{:04x} .. 0x{:04x} - Align: {} - Flags: {:?}",
+            println!("Section: '{}' -  ${:04x}..${:04x} - Align: {} - Flags: {:?}",
                 String::from_utf8(section.section_name().to_vec()).expect("Failed To Get Section Name"), 
                 section.addr(), section.addr() + section.size(), section.addralign(), section.flags()
             );

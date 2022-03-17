@@ -2,8 +2,8 @@
 runner = "cargo run --package build_boot --"
 
 [alias]
-kbuild = "build --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
-kimage = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- --no-run"
-krun = "run --release --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
-ktest = "test --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem"
-kgdb = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- --gdb"
+kbuild = "build --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem run.toml"
+kimage = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- run.toml --no-run"
+krun = "run --release --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem run.toml"
+ktest = "test --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem run.toml"
+kgdb = "run --target x86_64-custom.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -- run.toml --gdb"

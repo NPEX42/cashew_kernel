@@ -125,7 +125,7 @@ impl BitmapAllocator {
 
     fn alloc(frame_no: usize) {
 
-        klog!("Mapping Frame {:}\n", frame_no);
+        //klog!("Mapping Frame {:}\n", frame_no);
 
         let offset = frame_no / CHUNK_SIZE;
         let bit = frame_no % CHUNK_SIZE;
@@ -191,7 +191,9 @@ impl BitmapAllocator {
             None
         }
     }
-}
+
+    
+ }
 
 
 unsafe impl FrameAllocator<Size4KiB> for BitmapAllocator {

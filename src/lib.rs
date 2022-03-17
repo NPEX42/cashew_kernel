@@ -31,6 +31,8 @@ pub mod time;
 pub mod vga;
 pub mod vfs;
 
+pub mod post;
+
 
 pub mod wasi;
 pub mod simple_vm;
@@ -102,6 +104,8 @@ pub fn boot(info: &'static mut BootInfo) {
         } else {
             println!("No Cache Detected...");
         }
+
+        post::self_test();
 
     }   
 

@@ -33,8 +33,9 @@
 		- [ ] libc Implementation
 - [ ] I/O Devices
 	- [ ]  Char device Abstractions
-		- [ ] Terminal
-		- [ ] Serial  
+		- [x] Terminal
+		- [x] Serial  
+		- [ ] FIFO Pipe
 	- [ ] Block Devices
 		- [ ] ATA
 			- [x] PI/O Mode

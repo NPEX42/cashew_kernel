@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{ata, graphics_2d::*, kerr, println};
+use cashew_kernel::{ata, graphics_2d::*, kerr, println, device};
 use cashew_kernel::{csh, vfs::drivers::csh_fat::*};
 
 #[cfg(not(test))]
@@ -22,6 +22,14 @@ static mut FRAME: Frame = Frame::new();
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     if let Some(mut fb) = boot_info.framebuffer.as_mut() {
         cashew_kernel::boot(boot_info);
+
+        device::set_stdout(device::CharDevice::Terminal);
+
+        device::stdout::write_fmt(format_args!("Hello, World\n"));
+        device::set_stdin(device::CharDevice::Terminal);
+        let mut buffer = [255; 16];
+        device::stdin::read_into(&mut buffer);
+
         println!("Booting Complete, Press Any Key To continue");
 
         if superblock::validate() {

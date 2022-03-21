@@ -1,12 +1,12 @@
-use core::ops::Range;
+use core::{ops::Range, fmt::Write};
 
-use alloc::string::String;
+use alloc::{string::String, boxed::Box};
 
 use crate::{
     ata,
     csh::{ErrorCode, ExitCode, ShellArgs},
     println, sprint,
-    vfs::block::Block,
+    vfs::block::Block, serial, terminal, input,
 };
 
 pub type BlockAddr = u32;
@@ -211,4 +211,157 @@ pub fn info() -> Result<DeviceInfo, ()> {
 
 pub fn is_mounted() -> bool {
     unsafe { MOUNT.is_some() }
+}
+
+
+
+pub trait CharDeviceIO : Write {
+    fn read(&mut self) -> Option<u8>;
+    fn write(&mut self, value: u8);
+}
+
+static mut STD_OUT: Option<CharDevice> = None;
+static mut STD_IN: Option<CharDevice> = None;
+static mut STD_ERR: Option<CharDevice> = None;
+
+pub fn set_stdout(dev: CharDevice) {
+    unsafe {
+        STD_OUT = Some(dev);
+    }
+}
+
+
+pub fn set_stderr(dev: CharDevice) {
+    unsafe {
+        STD_ERR = Some(dev);
+    }
+}
+
+pub fn set_stdin(dev: CharDevice) {
+    unsafe {
+        STD_IN = Some(dev);
+    }
+}
+
+
+pub fn stdout<'a>() -> Option<&'a mut CharDevice> {
+    unsafe {
+        STD_OUT.as_mut()
+    }
+}
+
+pub fn stderr<'a>() -> Option<&'a mut CharDevice> {
+    unsafe {
+        STD_ERR.as_mut()
+    }
+}
+
+pub fn stdin<'a>() -> Option<&'a mut CharDevice> {
+    unsafe {
+        STD_IN.as_mut()
+    }
+}
+
+
+pub enum CharDevice {
+    Terminal,
+    Serial,
+    Pipe,
+}
+
+impl Write for CharDevice {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        for c in s.chars() {
+        self.write(c as u8);
+        }
+        return Ok(());
+    }
+}
+
+
+impl CharDeviceIO for CharDevice {
+    fn read(&mut self) -> Option<u8> {
+        match self {
+            Self::Serial => serial::read_u8(),
+            Self::Terminal => {
+                let res = match input::keyboard::read_char() {
+                    Some(key) => Some(key as u8),
+                    None => None,
+                };
+                input::keyboard::clear();
+                res
+            },
+            
+            Self::Pipe => {None}
+        }
+    }
+
+    fn write(&mut self, value: u8) {
+        match self {
+        Self::Pipe => {},
+        Self::Terminal => terminal::print(value),
+        Self::Serial => serial::write_u8(value)
+        }
+    }
+}
+
+pub mod stdout {
+    use core::fmt::{Arguments, Write};
+
+    use super::CharDeviceIO;
+
+    pub fn write(chr: char) {
+        if let Some(dev) = super::stdout() {
+            dev.write(chr as u8)
+        }
+    }
+
+
+    pub fn write_fmt(args: Arguments) {
+        if let Some(dev) = super::stdout() {
+            dev.write_fmt(args);
+        }
+    }
+}
+
+pub mod stderr {
+    use core::fmt::{Arguments, Write};
+
+    use super::CharDeviceIO;
+    pub fn write(chr: char) {
+        if let Some(dev) = super::stderr() {
+            dev.write(chr as u8)
+        }
+    }
+
+    pub fn write_fmt(args: Arguments) {
+        if let Some(dev) = super::stderr() {
+            dev.write_fmt(args).expect("Failed To Write To Stderr");
+        }
+    }
+}
+
+pub mod stdin {
+    use super::CharDeviceIO;
+    pub fn read() -> Option<u8> {
+        if let Some(dev) = super::stdout() {
+            dev.read()
+        } else {
+            None
+        }
+    }
+
+
+    pub fn read_into(buffer: &mut [u8]) -> usize {
+        let mut count = 0;
+        for idx in 0..buffer.len() {
+            match read() {
+                Some(byte) => buffer[idx] = byte,
+                None => {return count;}
+            }
+            count += 1;
+        }
+        buffer.len()
+    }
+
 }

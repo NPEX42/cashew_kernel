@@ -104,6 +104,10 @@ pub fn y() -> usize {
     x86_64::instructions::interrupts::without_interrupts(|| TERMINAL.get().unwrap().lock().y)
 }
 
+pub fn print(value: u8) {
+    x86_64::instructions::interrupts::without_interrupts(|| TERMINAL.get().unwrap().lock().put_char(value as char))
+}
+
 pub fn print_custom(bitmap: &[u8]) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         TERMINAL.get().unwrap().lock().draw_bitmap(bitmap);
@@ -197,6 +201,9 @@ impl TerminalWriter {
     }
 
     pub fn put_char(&mut self, chr: char) {
+
+        if chr == '\n' {self.newline(); return;}
+
         unsafe { &mut TERMINAL_FB }.draw_char(self.x, self.y, chr, self.fg_color, self.bg_color);
         self.x += FONT_WIDTH;
         if self.x >= vga::screen_width() {

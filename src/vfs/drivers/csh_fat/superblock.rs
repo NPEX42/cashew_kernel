@@ -4,7 +4,7 @@ use crate::{
     csh::{ExitCode, ShellArgs},
     device::{self},
     input, print, println,
-    vfs::block::Block,
+    vfs::block::Block, terminal, graphics_2d::{Pixel, ProgressBar},
 };
 const SUPERBLOCK_ADDR: u32 = 0;
 const SIGNATURE: &[u8; 3] = b"CFS";
@@ -172,26 +172,52 @@ pub fn alloc_count() -> usize {
 pub fn preload() {
     let size = bitmap_size() as f32;
     let start = bitmap_start();
+
+    let mut bmp_pb = ProgressBar::new(
+        start as f32, 
+        bitmap_end() as f32,
+        Pixel::hex(0xFFFFFFFF),
+        256.0);
+
     for bmp_addr in start..bitmap_end() {
         print!(
             "Preloading Bitmap - {:02.3}%\r",
             ((bmp_addr - start) as f32 / size) * 100.0
         );
+        bmp_pb.update(bmp_addr as f32);
+        bmp_pb.draw(2,  terminal::y() + 10);
+        
+
         Block::read(bmp_addr).unwrap();
     }
     print!("Preloading Bitmap - {:02.3}%\r", 100.0);
     println!();
+    bmp_pb.draw(2, terminal::y() + 10);
+    println!();
 
     let size = fat_size().unwrap() as f32;
+
+    let mut fat_pb = ProgressBar::new(
+        fat_start().unwrap() as f32, 
+        fat_end() as f32,
+        Pixel::hex(0xFFFFFFFF),
+        256.0);
+
     for fat_addr in fat_start().unwrap()..fat_end() {
         print!(
             "Preloading FAT - {:02.3}%\r",
             (fat_addr as f32 / size) * 100.0
         );
+        fat_pb.update(fat_addr as f32);
+        fat_pb.draw(2,  terminal::y() + 8);
         Block::read(fat_addr).unwrap();
     }
 
+    
+
     print!("Preloading FAT - {:02.3}%\r", 100.0);
+    println!();
+    fat_pb.draw(2,  terminal::y() + 10);
     println!();
 }
 

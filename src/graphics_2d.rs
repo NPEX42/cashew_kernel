@@ -1,6 +1,6 @@
 pub mod palletes;
 
-use crate::{fonts, pit, vga};
+use crate::{fonts, pit, vga::{self, draw_filled_rect}};
 use core::ops::*;
 use font8x8::UnicodeFonts;
 
@@ -58,6 +58,11 @@ pub struct Frame {
 }
 
 impl Frame {
+
+    pub fn rect(x: usize, y: usize, w: usize, h: usize, fill: Pixel) {
+        
+    }
+
     pub fn shift_up(&mut self, amount: usize) {
         for y in amount..HEIGHT {
             for x in 0..WIDTH {
@@ -124,12 +129,6 @@ impl Frame {
             fonts::BASIC_FONTS
                 .get(chr)
                 .unwrap_or(fonts::UNICODE_REPLACEMENT)
-        } else if chr == '\n' {
-            fonts::NEW_LINE_PRINTABLE
-        } else if chr == '\0' {
-            fonts::NULL_PRINTABLE
-        } else if chr == '\r' {
-            fonts::CR_PRINTABLE
         } else {
             fonts::UNICODE_REPLACEMENT
         };
@@ -143,6 +142,35 @@ impl Frame {
                 }
             }
         }
+    }
+}
+
+pub struct ProgressBar {
+    current: f32,
+    size: f32,
+    min: f32, max: f32,
+    color: Pixel
+}
+
+impl ProgressBar {
+    pub fn new(min: f32, max: f32, color: Pixel, size: f32) -> Self {
+        Self {
+            color,
+            current: min,
+            max,
+            min,
+            size
+        }
+    }
+
+    pub fn draw(&self, x: usize, y: usize) {
+        let pct = (self.current - self.min) / (self.max - self.min);
+        let w = pct * self.size;
+        vga::draw_filled_rect(x, y, 8, w as usize, self.color);
+    }
+
+    pub fn update(&mut self, value: f32) {
+        self.current = value.clamp(self.min, self.max);
     }
 }
 

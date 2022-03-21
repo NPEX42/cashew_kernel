@@ -1,19 +1,28 @@
-
-
 use core::fmt::Display;
 
-use alloc::{string::{String, ToString}, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use bit_field::BitField;
 
-use crate::{vfs::{block::{self, Block, LinkedBlock}, BlockAllocator}, mem::allocator::BitmapAllocator, kerr, println, klog};
-
+use crate::{
+    kerr, klog,
+    mem::allocator::BitmapAllocator,
+    println,
+    vfs::{
+        block::{self, Block, LinkedBlock},
+        BlockAllocator,
+    },
+};
+const SUPERBLOCK_ADDR: u32 = 0;
 pub const FAT_START: usize = 1;
 pub const FAT_SIZE: usize = 256;
 pub const ENTRY_SIZE: usize = 32;
 pub const DISK_SIZE: usize = 128 << 20;
 pub const DISK_BLOCKS: usize = DISK_SIZE / 512;
 
-
+pub mod superblock;
 
 pub const FNAME_START: usize = 0;
 pub const FNAME_SIZE: usize = 16;
@@ -27,25 +36,17 @@ pub const TYPE_SIZE: usize = 1;
 pub const DSTART_START: usize = TYPE_START + TYPE_SIZE;
 pub const DSTART_SIZE: usize = 4;
 
-
 pub const DATA_START: usize = FAT_START + FAT_SIZE + (DISK_SIZE / 4096);
-
-
-
-
-
-
 
 pub struct BlockBitmap;
 
 impl BlockBitmap {
-
     fn get_bitmap_offset(block: usize) -> usize {
         block - DATA_START
     }
 
     fn get_bitmap_index(block: usize) -> u32 {
-        ((((block - DATA_START)) / 4096) + FAT_START + FAT_SIZE) as u32
+        (((block - DATA_START) / 4096) + FAT_START + FAT_SIZE) as u32
     }
 
     fn alloc(block: usize) {
@@ -62,7 +63,6 @@ impl BlockBitmap {
         blck.write();
     }
 
-
     fn is_used(block: usize) -> bool {
         let mut blck = Block::read(Self::get_bitmap_index(block)).unwrap();
         let offset = Self::get_bitmap_offset(block);
@@ -76,7 +76,6 @@ impl BlockBitmap {
 
 impl BlockAllocator for BlockBitmap {
     fn allocate(&mut self) -> Option<Block> {
-
         for block in DATA_START..DISK_BLOCKS {
             if !Self::is_used(block) {
                 if let Some(blck) = Block::read(block as u32) {
@@ -98,16 +97,15 @@ impl BlockAllocator for BlockBitmap {
 pub struct FAT;
 
 impl FAT {
-
     pub fn entry_count() -> usize {
         FileEntryIter::default().count()
     }
 
     pub fn next_free() -> Option<usize> {
-        for index in 0..FAT_SIZE/(512/ENTRY_SIZE)  {
+        for index in 0..FAT_SIZE / (512 / ENTRY_SIZE) {
             match FAT::get_entry(index) {
-                Ok(_) => {},
-                Err(_) => {return Some(index)}
+                Ok(_) => {}
+                Err(_) => return Some(index),
             }
         }
 
@@ -119,34 +117,36 @@ impl FAT {
         let start = (index & 0xF) << 5;
         let end = start + ENTRY_SIZE;
 
-        if start == 512 {return Err(())}
+        if start == 512 {
+            return Err(());
+        }
 
         let entry_data = &block.data()[start..end];
 
-
-
-
         let mut entry: FileEntry = Default::default();
 
-        if entry_data[0] == 0 {return Err(())}
+        if entry_data[0] == 0 {
+            return Err(());
+        }
 
-        entry.name = String::from_utf8_lossy(&entry_data[FNAME_START..SIZE_START]).trim().to_string();
+        entry.name = String::from_utf8_lossy(&entry_data[FNAME_START..SIZE_START])
+            .trim()
+            .to_string();
         entry.size = u32::from_be_bytes(entry_data[SIZE_START..TYPE_START].try_into().unwrap());
         entry.ftype = entry_data[TYPE_START];
-        entry.data_start = u32::from_be_bytes(entry_data[DSTART_START..DSTART_START+4].try_into().unwrap());
+        entry.data_start = u32::from_be_bytes(
+            entry_data[DSTART_START..DSTART_START + 4]
+                .try_into()
+                .unwrap(),
+        );
         Ok(entry)
     }
 
-
     pub fn set_entry(index: usize, entry: Option<&FileEntry>) -> Result<(), ()> {
-
-
         let mut block = Block::read(((index / ENTRY_SIZE) + FAT_START) as u32).unwrap();
         let start = index << 5;
         let end = start + ENTRY_SIZE;
         let entry_data = &mut block.data_mut()[start..end];
-
-        
 
         if let Some(entry) = entry {
             assert!(entry.name.as_bytes().len() <= 16);
@@ -154,50 +154,41 @@ impl FAT {
             entry_data[0..entry.name.as_bytes().len()].copy_from_slice(entry.name.as_bytes());
             entry_data[SIZE_START..TYPE_START].copy_from_slice(&entry.size.to_be_bytes());
             entry_data[TYPE_START] = entry.ftype;
-            entry_data[DSTART_START..DSTART_START+DSTART_SIZE].copy_from_slice(&entry.data_start.to_be_bytes());
+            entry_data[DSTART_START..DSTART_START + DSTART_SIZE]
+                .copy_from_slice(&entry.data_start.to_be_bytes());
         } else {
             entry_data.fill(0);
         }
 
         block.write();
 
-
         Ok(())
     }
-
-    
 }
 
 #[derive(Debug, Default)]
 pub struct FileEntryIter {
-    next: usize
+    next: usize,
 }
 
 impl Iterator for FileEntryIter {
     type Item = (usize, FileEntry);
 
     fn next(&mut self) -> Option<Self::Item> {
-        
-
         while let Err(_) = FAT::get_entry(self.next) {
             self.next += 1;
-            if self.next >= FAT_SIZE/(512/ENTRY_SIZE) {return None};
+            if self.next >= FAT_SIZE / (512 / ENTRY_SIZE) {
+                return None;
+            };
         }
 
         let r = FAT::get_entry(self.next).expect("Failed To Get Entry...");
 
-
-
         self.next += 1;
 
-
         Some((self.next - 1, r))
-    } 
+    }
 }
-
-
-
-
 
 #[derive(Debug, Clone, Default)]
 pub struct FileEntry {
@@ -215,7 +206,6 @@ impl FileEntry {
     }
 
     pub fn set_data(&mut self, data: &[u8]) -> Result<(), ()> {
-
         self.size = data.len() as u32;
 
         if let Some(mut head) = self.head() {
@@ -228,25 +218,26 @@ impl FileEntry {
             head.set_data(data);
         }
 
-
-
         Ok(())
-    } 
+    }
 
     pub fn head(&self) -> Option<LinkedBlock> {
-        if self.data_start == 0 {return None;} else {
+        if self.data_start == 0 {
+            return None;
+        } else {
             Some(LinkedBlock::read(self.data_start).expect("Failed To Read Block"))
         }
     }
-
-    
 }
-
 
 impl Display for FileEntry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if let Some(head) = self.head() {
-            write!(f, "FAT Entry [{:<16}|{} Bytes|{}]", self.name, self.size, head)
+            write!(
+                f,
+                "FAT Entry [{:<16}|{} Bytes|{}]",
+                self.name, self.size, head
+            )
         } else {
             write!(f, "FAT Entry [{:<16}|{}|NUL]", self.name, self.name)
         }
@@ -254,8 +245,8 @@ impl Display for FileEntry {
 }
 
 pub struct File {
-    entry: (usize, FileEntry), 
-    data:  Vec<u8>,
+    entry: (usize, FileEntry),
+    data: Vec<u8>,
     pos: usize,
 }
 
@@ -270,7 +261,7 @@ impl File {
             Some(Self {
                 data: Vec::new(),
                 pos: 0,
-                entry: (index, entry)
+                entry: (index, entry),
             })
         } else {
             None
@@ -280,8 +271,8 @@ impl File {
     fn from(index: usize, file_entry: FileEntry) -> Self {
         Self {
             data: file_entry.to_vec().expect("Failed To Read Data"),
-            entry: (index,file_entry),
-            pos: 0
+            entry: (index, file_entry),
+            pos: 0,
         }
     }
 
@@ -296,7 +287,7 @@ impl File {
         return None;
     }
 
-    fn sync(&mut self) -> Result<(),()> {
+    fn sync(&mut self) -> Result<(), ()> {
         let entry = &mut self.entry.1;
         let index = self.entry.0;
 
@@ -310,7 +301,6 @@ impl File {
         self.sync()
     }
 
-
     pub fn data(&self) -> &Vec<u8> {
         &self.data
     }
@@ -320,20 +310,21 @@ impl File {
     }
 
     pub fn write(&mut self, data: &[u8]) -> usize {
-
         for i in 0..data.len() {
-            if self.pos >= self.data.len() {self.sync(); return i};
+            if self.pos >= self.data.len() {
+                self.sync();
+                return i;
+            };
             self.data[self.pos] = data[i];
             self.pos += 1;
-        };
+        }
         self.sync();
         data.len()
     }
-
 }
 
 impl Display for File {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} [{}]", self.entry.1.name, self.entry.1) 
+        write!(f, "{} [{}]", self.entry.1.name, self.entry.1)
     }
 }

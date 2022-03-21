@@ -1,4 +1,3 @@
-
 pub struct Interpreter<'a, const MEM_SIZE: usize, const STACK_SIZE: usize> {
     ip: usize,
     sp: usize,
@@ -26,9 +25,12 @@ impl<'a, const MEM_SIZE: usize, const STACK_SIZE: usize> Interpreter<'a, MEM_SIZ
 
     fn clock(&mut self) {
         match self.next_prg_byte() {
-            0x10 => {self.dup_u8()}
+            0x10 => self.dup_u8(),
 
-            0x20 => {let x = self.next_prg_byte(); self.push_u8(x)}
+            0x20 => {
+                let x = self.next_prg_byte();
+                self.push_u8(x)
+            }
             _ => {}
         }
 
@@ -100,12 +102,10 @@ impl<'a, const MEM_SIZE: usize, const STACK_SIZE: usize> Interpreter<'a, MEM_SIZ
         (h << 8) | l
     }
 
-
     fn next_prg_byte(&mut self) -> u8 {
         let r = self.program[self.ip];
         self.ip += 1;
 
         r
     }
-
 }

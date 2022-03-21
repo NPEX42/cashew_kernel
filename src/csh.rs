@@ -1,9 +1,16 @@
-use alloc::{vec::Vec, string::{String, ToString}, collections::BTreeMap};
+use alloc::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 
-use crate::{data::{hashmap::HashMap}, input, sprint, mem, println, device, time, arch};
+use crate::{
+    api::fs::csh_fat::superblock, arch, data::hashmap::HashMap, device, input, mem, println,
+    sprint, time,
+};
 
-pub mod ls;
 pub mod cat;
+pub mod ls;
 pub mod objdump;
 
 pub type ShellArgs = Vec<String>;
@@ -28,15 +35,15 @@ pub fn init() -> Result<(), ()> {
     add_program("help", help)?;
     add_program("time", time::time)?;
     add_program("shutdown", shutdown)?;
+    add_program("format", superblock::csh_format)?;
 
     Ok(())
 }
 
-
 #[derive(Debug)]
 pub enum ExitCode {
     Ok,
-    Error(ErrorCode)
+    Error(ErrorCode),
 }
 
 #[derive(Debug)]
@@ -51,7 +58,7 @@ pub enum ErrorCode {
 
     FatalError(u8),
     TerminatedCtlC,
-    Usage
+    Usage,
 }
 
 impl ExitCode {
@@ -79,11 +86,18 @@ impl ErrorCode {
     }
 }
 
-
 pub fn exec(cmd: &str) -> ExitCode {
-    if cmd.is_empty() {return ExitCode::Ok}
-    if cmd == "exit" {return ExitCode::Ok}
-    let parts: ShellArgs = cmd.to_string().split_ascii_whitespace().map(|s| {s.to_string()}).collect::<Vec<String>>();
+    if cmd.is_empty() {
+        return ExitCode::Ok;
+    }
+    if cmd == "exit" {
+        return ExitCode::Ok;
+    }
+    let parts: ShellArgs = cmd
+        .to_string()
+        .split_ascii_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
     let ec = if let Some(main) = unsafe { PROGS.get(&parts[0]) } {
         main(parts)
     } else {
@@ -94,11 +108,12 @@ pub fn exec(cmd: &str) -> ExitCode {
 }
 
 pub fn main(_: ShellArgs) -> ExitCode {
-
     let mut line = String::new();
     while line != "exit".to_string() {
         line = input::prompt(">> ");
-        if line == "exit".to_uppercase() {break;}
+        if line == "exit".to_uppercase() {
+            break;
+        }
         match exec(&line) {
             ExitCode::Error(ec) => {
                 if ec.unix() != 127 {
@@ -113,7 +128,7 @@ pub fn main(_: ShellArgs) -> ExitCode {
 }
 
 pub fn help(_: ShellArgs) -> ExitCode {
-    for (cmd, _) in unsafe {&PROGS} {
+    for (cmd, _) in unsafe { &PROGS } {
         println!(" - {}", cmd);
     }
 

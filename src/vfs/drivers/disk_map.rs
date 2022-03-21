@@ -2,36 +2,39 @@ use alloc::{collections::BTreeMap, string::String};
 
 #[derive(Debug, Clone)]
 pub enum EntryKind {
-    Unused, Data, MetaData, Generic(u8),
-    Super, Bitmap, Fat, Bootloader, Reserved,
+    Unused,
+    Data,
+    MetaData,
+    Generic(u8),
+    Super,
+    Bitmap,
+    Fat,
+    Bootloader,
+    Reserved,
 }
 
 #[derive(Debug, Clone)]
 pub struct DiskEntry {
     kind: EntryKind,
     start: u32,
-    size: u32, 
+    size: u32,
 }
 
 impl DiskEntry {
     pub fn new(kind: EntryKind, start: u32, size: u32) -> Self {
-        Self {
-            kind,
-            size,
-            start
-        }
+        Self { kind, size, start }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct DiskMap {
-    map: BTreeMap<String, DiskEntry>
+    map: BTreeMap<String, DiskEntry>,
 }
 
 impl DiskMap {
     pub fn new() -> Self {
         Self {
-            map: BTreeMap::new()
+            map: BTreeMap::new(),
         }
     }
 
@@ -43,10 +46,11 @@ impl DiskMap {
         self.map.get(name.into())
     }
 
-
-    
     pub fn set_bootloader(&mut self, bytes: u32) {
-        self.add_entry("__bootloader", DiskEntry::new(EntryKind::Bootloader, 0, bytes / 512));
+        self.add_entry(
+            "__bootloader",
+            DiskEntry::new(EntryKind::Bootloader, 0, bytes / 512),
+        );
     }
 
     pub fn min_disk_len(&self) -> usize {
@@ -61,24 +65,35 @@ impl DiskMap {
 
     pub fn add_data(&mut self, bytes: usize) {
         let start = self.min_disk_len() as u32;
-        self.add_entry("__data", DiskEntry::new(EntryKind::Data, start, (bytes / 512) as u32));
+        self.add_entry(
+            "__data",
+            DiskEntry::new(EntryKind::Data, start, (bytes / 512) as u32),
+        );
     }
 
     pub fn set_superblock(&mut self, size: u32) {
         let start = self.min_disk_len() as u32;
-        self.add_entry("__superblock", DiskEntry::new(EntryKind::Super, start, size))
+        self.add_entry(
+            "__superblock",
+            DiskEntry::new(EntryKind::Super, start, size),
+        )
     }
 
     pub fn set_bitmap(&mut self, records: Option<u32>) {
         let start = self.min_disk_len() as u32;
         if let Some(data_entry) = self.get_entry("__data").cloned() {
-            self.add_entry("__bitmap", DiskEntry::new(EntryKind::Bitmap, start,  (data_entry.size / 8) / 512));
+            self.add_entry(
+                "__bitmap",
+                DiskEntry::new(EntryKind::Bitmap, start, (data_entry.size / 8) / 512),
+            );
         } else {
             assert!(records.is_some());
-            self.add_entry("__bitmap", DiskEntry::new(EntryKind::Bitmap, start, (records.unwrap() / 8) / 512));
+            self.add_entry(
+                "__bitmap",
+                DiskEntry::new(EntryKind::Bitmap, start, (records.unwrap() / 8) / 512),
+            );
         }
     }
-
 
     pub fn ustar_map() -> Self {
         let mut map = Self::new();

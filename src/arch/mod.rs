@@ -3,11 +3,11 @@ pub use x86_64 as x64;
 use x64::instructions::port::Port;
 
 pub mod acpi;
+pub mod cmos;
+pub mod cpu;
+mod gdt;
 mod idt;
 mod pic;
-mod gdt;
-pub mod cpu;
-pub mod cmos;
 pub mod vmm;
 
 pub mod io;

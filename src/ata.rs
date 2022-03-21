@@ -1,11 +1,12 @@
-use core::mem::size_of;
-use alloc::collections::BTreeMap;
 use crate::arch::x64::instructions::port;
 use crate::device::BlockAddr;
 use crate::klog;
 use crate::pit::sleep;
+use crate::println;
 use crate::sprint;
 use crate::vfs::block::Block;
+use alloc::collections::BTreeMap;
+use core::mem::size_of;
 
 use alloc::string::String;
 use bit_field::BitField;
@@ -15,14 +16,19 @@ use port::PortWriteOnly as PortW;
 
 pub const BLOCK_SIZE: usize = 512;
 
+pub const CACHE_LINE_SIZE: u32 = 8;
+
 static mut BLOCK_CACHE: BTreeMap<(u8, u8, u32), [u8; BLOCK_SIZE]> = BTreeMap::new();
 
+static mut CACHE_MISSES: usize = 0;
+static mut CACHE_HITS: usize = 0;
+static mut TOTAL_OPS: usize = 0;
 
 #[allow(deprecated)]
 pub fn write_block(bus: u8, drive: u8, block: BlockAddr, data: &[u8]) -> EmptyResult {
     unsafe {
         let mut buf = [0; BLOCK_SIZE];
-        buf.copy_from_slice(data); 
+        buf.copy_from_slice(data);
         BLOCK_CACHE.insert((bus, drive, block), buf);
         write(bus, drive, block, data)?;
         Ok(())
@@ -32,18 +38,48 @@ pub fn write_block(bus: u8, drive: u8, block: BlockAddr, data: &[u8]) -> EmptyRe
 #[allow(deprecated)]
 pub fn read_block(bus: u8, drive: u8, addr: u32) -> Result<[u8; BLOCK_SIZE], ()> {
     unsafe {
+        TOTAL_OPS += 1;
         if BLOCK_CACHE.contains_key(&(bus, drive, addr)) {
-            klog!("Block {:?} In Cache.\n", (bus, drive, addr));
+            CACHE_HITS += 1;
             return Ok(*BLOCK_CACHE.get(&(bus, drive, addr)).unwrap());
         } else {
             let data = read(bus, drive, addr)?;
             BLOCK_CACHE.insert((bus, drive, addr), data);
-            klog!("Block {:?} Has Been Cached.\n",  (bus, drive, addr));
+
+            for i in 0..CACHE_LINE_SIZE {
+                if let Ok(data_next) = read(bus, drive, addr + i) {
+                    BLOCK_CACHE.insert((bus, drive, addr + i), data_next);
+                }
+            }
+
+            CACHE_MISSES += 1;
             return Ok(data);
         }
-
-        
     }
+}
+
+pub fn cache_stats() {
+    println!("==== Cache Stats ====");
+    println!("Misses: {:04}/{:04}", misses(), total_ops());
+    println!("Hits:   {:04}/{:04}", hits(), total_ops());
+    println!("Availability: {:02.3}%", availability() * 100.0);
+    println!("=====================");
+}
+
+pub fn hits() -> usize {
+    unsafe { CACHE_HITS }
+}
+
+pub fn misses() -> usize {
+    unsafe { CACHE_MISSES }
+}
+
+pub fn total_ops() -> usize {
+    unsafe { TOTAL_OPS }
+}
+
+pub fn availability() -> f64 {
+    hits() as f64 / total_ops() as f64
 }
 
 pub type EmptyResult = Result<(), ()>;

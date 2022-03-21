@@ -1,7 +1,7 @@
 use alloc::string::String;
 use pc_keyboard::KeyCode::*;
 
-use crate::{pit, print, arch};
+use crate::{pit, print};
 
 pub mod keyboard;
 
@@ -14,14 +14,17 @@ pub fn init() {
         .expect("[PS/2] - Initialization Failed...");
 }
 
-
 pub fn prompt(prompt: &str) -> String {
     let mut output = String::new();
     'prompt_loop: loop {
         if let Some(key) = keyboard::read_keycode() {
             match key {
-                Backspace => {output.pop();}
-                Enter => {break 'prompt_loop;}
+                Backspace => {
+                    output.pop();
+                }
+                Enter => {
+                    break 'prompt_loop;
+                }
                 _ => {}
             }
         }
@@ -29,9 +32,13 @@ pub fn prompt(prompt: &str) -> String {
         if let Some(chr) = keyboard::read_char() {
             match chr {
                 '\x1b' => {}
-                '\x08' => {output.pop();}
-                '\n' => {break 'prompt_loop;}
-                _ => { output.push(chr) }
+                '\x08' => {
+                    output.pop();
+                }
+                '\n' => {
+                    break 'prompt_loop;
+                }
+                _ => output.push(chr),
             }
         }
 
@@ -39,10 +46,8 @@ pub fn prompt(prompt: &str) -> String {
 
         keyboard::clear();
 
-
-
         print!("{}{} \r", prompt, output);
-        
+
         pit::sleep(1);
     }
 
@@ -54,7 +59,6 @@ pub fn prompt(prompt: &str) -> String {
 pub fn wait_for_key() {
     keyboard::clear();
     while let None = keyboard::read_char() {
-
         pit::sleep(1);
     }
     keyboard::clear();

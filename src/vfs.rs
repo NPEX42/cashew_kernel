@@ -1,7 +1,3 @@
-use alloc::{vec::Vec};
-
-use crate::device::BlockAddr;
-
 use self::block::Block;
 
 pub mod block;
@@ -17,7 +13,7 @@ pub enum SeekPos {
     FromStart(usize),
     FromEnd(usize),
     FromCurrent(usize),
-    None
+    None,
 }
 
 pub trait VirtualFileSystem {
@@ -32,7 +28,3 @@ pub trait BlockAllocator {
     fn allocate(&mut self) -> Option<Block>;
     fn free(&mut self, block: u32);
 }
-
-
-
-

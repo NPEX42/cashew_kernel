@@ -12,6 +12,8 @@
 
 use core::panic::PanicInfo;
 
+pub mod api;
+
 pub mod arch;
 pub mod ata;
 pub mod csh;
@@ -28,14 +30,13 @@ pub mod pit;
 pub mod serial;
 pub mod terminal;
 pub mod time;
-pub mod vga;
 pub mod vfs;
+pub mod vga;
 
 pub mod post;
 
-
-pub mod wasi;
 pub mod simple_vm;
+pub mod wasi;
 
 extern crate alloc;
 
@@ -67,7 +68,6 @@ fn alloc_error(layout: alloc::alloc::Layout) -> ! {
     );
 }
 
-
 pub fn boot(info: &'static mut BootInfo) {
     if let Some(fb) = info.framebuffer.as_mut() {
         vga::initialize(fb.buffer_mut().as_mut_ptr(), fb.info());
@@ -83,12 +83,12 @@ pub fn boot(info: &'static mut BootInfo) {
         mem::setup_from(info);
         mem::init(phys_mem_offset, &*info.memory_regions);
 
-        
-
         cmos::CMOS::new().enable_periodic_interrupt();
         time::set_rate(3);
 
-        println!("Main Processor: '{:?}' - SSE {} - SSE2 {} - AVX {}", arch::cpu::vendor_info(),
+        println!(
+            "Main Processor: '{:?}' - SSE {} - SSE2 {} - AVX {}",
+            arch::cpu::vendor_info(),
             arch::cpu::supports_sse(),
             arch::cpu::supports_sse2(),
             arch::cpu::supports_avx(),
@@ -106,10 +106,7 @@ pub fn boot(info: &'static mut BootInfo) {
         }
 
         post::self_test();
-
-    }   
-
-
+    }
 }
 
 pub fn shutdown() -> ! {

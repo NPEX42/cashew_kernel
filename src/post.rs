@@ -1,7 +1,6 @@
-use crate::{vfs::block::{self, Block}, klog, csh};
+use crate::{csh, klog, vfs::block::Block};
 
 pub fn self_test() {
-
     csh::init().expect("Failed To Initialize The Shell...");
     csh::exec("mount hdb");
 
@@ -12,5 +11,8 @@ pub fn self_test() {
     let mut block = Block::allocate().unwrap();
     let second_addr = block.addr();
     block.free();
-    assert_eq!(first_addr, second_addr, "Block::free() Failed, Allocated Different Addresses.");
+    assert_eq!(
+        first_addr, second_addr,
+        "Block::free() Failed, Allocated Different Addresses."
+    );
 }

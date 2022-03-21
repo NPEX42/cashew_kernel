@@ -1,11 +1,15 @@
 use lazy_static::lazy_static;
-use x86_64::{structures::{gdt::*, tss::TaskStateSegment}, VirtAddr, instructions::{segmentation::*, tables::load_tss}};
+use x86_64::{
+    instructions::{segmentation::*, tables::load_tss},
+    structures::{gdt::*, tss::TaskStateSegment},
+    VirtAddr,
+};
 
 use crate::{println, sprint};
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 static mut STACK: [u8; 4096 * 5] = [0; 4096 * 5];
-static mut USR_STACK: [u8; 4096 * 5] = [0; 4096 * 5];
+static mut _USR_STACK: [u8; 4096 * 5] = [0; 4096 * 5];
 
 lazy_static! {
 
@@ -32,11 +36,11 @@ lazy_static! {
     };
 }
 
-pub fn init_gdt() {
+pub fn _init_gdt() {
     sprint!("Loading GDT\n");
     GDT.0.load();
     let stack = unsafe { &STACK as *const _ };
-    let user_stack = unsafe { &USR_STACK as *const _ };
+    let user_stack = unsafe { &_USR_STACK as *const _ };
     println!(
         " - Loaded GDT: {:p} TSS: {:p} Stack {:p} User stack: {:p} CS segment: {} TSS segment: {}",
         &GDT.0 as *const _, &*TSS as *const _, stack, user_stack, GDT.1[0].0, GDT.1[1].0

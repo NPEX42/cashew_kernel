@@ -1,4 +1,2 @@
-pub mod pio;
 pub mod mmio;
-
-
+pub mod pio;

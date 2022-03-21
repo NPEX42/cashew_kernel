@@ -1,30 +1,28 @@
-use core::{ops::Range, arch::asm, fmt::Display};
+use core::{arch::asm, fmt::Display, ops::Range};
 
 use bit_field::BitField;
-use x86_64::{PhysAddr, structures::paging::PhysFrame, VirtAddr, registers::control::Cr3};
+use x86_64::{registers::control::Cr3, structures::paging::PhysFrame, PhysAddr, VirtAddr};
 
-use crate::{mem, klog};
+use crate::{klog, mem};
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PageTableEntry(u64);
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C, align(4096))]
 pub struct PageTable {
-    entries: [PageTableEntry; 512]
+    entries: [PageTableEntry; 512],
 }
 
-
-pub const PTF_PRESENT_BIT:          usize = 0;
-pub const PTF_WRITABLE_BIT:         usize = 1;
-pub const PTF_USER_BIT:             usize = 2;
-pub const PTF_WRITE_THROUGH_BIT:    usize = 3;
-pub const PTF_NO_CACHE_BIT:         usize = 4;
-pub const PTF_ACCESSED_BIT:         usize = 5;
-pub const PTF_DIRTY_BIT:            usize = 6;
-pub const PTF_HUGE_PAGE_BIT:        usize = 7;
-pub const PTF_GLOBAL_BIT:           usize = 8;
+pub const PTF_PRESENT_BIT: usize = 0;
+pub const PTF_WRITABLE_BIT: usize = 1;
+pub const PTF_USER_BIT: usize = 2;
+pub const PTF_WRITE_THROUGH_BIT: usize = 3;
+pub const PTF_NO_CACHE_BIT: usize = 4;
+pub const PTF_ACCESSED_BIT: usize = 5;
+pub const PTF_DIRTY_BIT: usize = 6;
+pub const PTF_HUGE_PAGE_BIT: usize = 7;
+pub const PTF_GLOBAL_BIT: usize = 8;
 pub const PTF_ADDRESS_BITS: Range<usize> = 12..52;
-
 
 impl PageTableEntry {
     pub fn empty() -> Self {
@@ -48,7 +46,7 @@ impl PageTableEntry {
     }
 
     pub fn phys_address(&self) -> PhysAddr {
-        return PhysAddr::new_truncate(self.address())
+        return PhysAddr::new_truncate(self.address());
     }
 
     pub fn set_bit(&mut self, bit: usize, value: bool) {
@@ -70,20 +68,24 @@ impl PageTableEntry {
     }
 
     pub fn to_page(&self) -> Option<Page> {
-        if self.is_free() {return None};
+        if self.is_free() {
+            return None;
+        };
 
-        Some(
-            Page::from(VirtAddr::new(self.address()).align_down(4096 as u64))
-        )
+        Some(Page::from(
+            VirtAddr::new(self.address()).align_down(4096 as u64),
+        ))
     }
 
     pub fn to_page_table(&self) -> Option<PageTable> {
-        if self.is_free() {return None};
+        if self.is_free() {
+            return None;
+        };
 
         unsafe {
-        Some(
-            PageTable::clone_from_phys_frame(PhysFrame::containing_address(self.phys_address()))
-            )
+            Some(PageTable::clone_from_phys_frame(
+                PhysFrame::containing_address(self.phys_address()),
+            ))
         }
     }
 
@@ -95,14 +97,16 @@ impl PageTableEntry {
 impl PageTable {
     pub fn new() -> Self {
         Self {
-            entries: [PageTableEntry::empty(); 512]
+            entries: [PageTableEntry::empty(); 512],
         }
     }
 
     pub fn get_table(&self, index: usize) -> Option<Self> {
         unsafe {
             if self.entries[index].is_present() {
-                Some(Self::clone_from_phys_frame(PhysFrame::containing_address(self.entries[index].phys_address())))
+                Some(Self::clone_from_phys_frame(PhysFrame::containing_address(
+                    self.entries[index].phys_address(),
+                )))
             } else {
                 None
             }
@@ -113,7 +117,7 @@ impl PageTable {
         let virt = mem::phys_to_virt(frame.start_address()).unwrap();
         let virt_ptr = virt.as_ptr() as *const PageTable;
 
-        return *virt_ptr
+        return *virt_ptr;
     }
 
     pub fn frame_addr(&self) -> Option<PhysAddr> {
@@ -130,7 +134,6 @@ impl PageTable {
     }
 
     pub unsafe fn clone_from_cr3() -> Self {
-        
         let pagetable = Self::clone_from_phys_frame(Cr3::read().0);
         klog!("Cloned PageTable At {:?}\n", pagetable.frame_addr());
         pagetable
@@ -143,32 +146,29 @@ impl PageTable {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut PageTableEntry> {
         self.entries.iter_mut()
     }
-
-
 }
 
 impl Display for PageTableEntry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "PageTableEntry({:08b}[HDACTUWP], ${:010x})", self.flags(), self.address())
+        write!(
+            f,
+            "PageTableEntry({:08b}[HDACTUWP], ${:010x})",
+            self.flags(),
+            self.address()
+        )
     }
 }
-
-
 
 pub struct Page {
     start: VirtAddr,
 }
 
 impl Page {
-
-
     /// ## Panics
     /// - Panics If The Address is not aligned on a 4096 Boundary (One Page).
     pub fn from(addr: VirtAddr) -> Page {
         assert!(addr.is_aligned(4096u64));
-        Page {
-            start: addr
-        }
+        Page { start: addr }
     }
 
     pub fn containing_address(addr: VirtAddr) -> Page {

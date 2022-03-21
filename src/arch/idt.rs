@@ -1,6 +1,6 @@
 use crate::arch::pic;
+use crate::input::wait_for_key;
 use crate::{sprint, time};
-use bit_field::BitField;
 use lazy_static::lazy_static;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
@@ -17,8 +17,7 @@ pub enum Interrupts {
 
     Cmos = PIC1 + 8,
 
-    Mouse = PIC1 + 12,
-
+    //Mouse = PIC1 + 12,
     AtaB0 = PIC1 + 14,
     AtaB1,
 }
@@ -56,12 +55,14 @@ lazy_static! {
 }
 
 pub fn initialize() {
+    // FIXME(george): Triple Faults When Initializing the GDT.
     //super::gdt::init_gdt();
     IDT.load();
 }
 
 extern "x86-interrupt" fn breakpoint(frame: InterruptStackFrame) {
-    sprint!("#BP @ V${:08x}\n", frame.instruction_pointer.as_u64());
+    sprint!("#BP @ ${:08x}\n", frame.instruction_pointer.as_u64());
+    wait_for_key()
 }
 
 extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, _: u64) -> ! {
@@ -70,25 +71,22 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, _: u64) -> ! 
 
 extern "x86-interrupt" fn page_fault(_: InterruptStackFrame, ec: PageFaultErrorCode) {
     if (!ec.bits() & !PageFaultErrorCode::PROTECTION_VIOLATION.bits()) == 0 {
-        crate::mem::map_virt(Cr2::read(), crate::mem::PTFlags::PRESENT | crate::mem::PTFlags::WRITABLE);
+        crate::mem::map_virt(
+            Cr2::read(),
+            crate::mem::PTFlags::PRESENT | crate::mem::PTFlags::WRITABLE,
+        );
     }
-
-    
 }
 
 extern "x86-interrupt" fn gen_protection(_: InterruptStackFrame, ec: u64) {
     sprint!("#GP - General Protection Fault {:#016X}...\n", ec);
 
-
     loop {}
 }
 
 extern "x86-interrupt" fn divide_err(sf: InterruptStackFrame) {
-    sprint!(
-        "#DE - ${:016x}\n", sf.instruction_pointer
-    );
+    sprint!("#DE - ${:016x}\n", sf.instruction_pointer);
 }
-
 
 extern "x86-interrupt" fn timer(_: InterruptStackFrame) {
     //crate::sprint!("Tick!\n");
@@ -109,7 +107,6 @@ extern "x86-interrupt" fn ata0(_: InterruptStackFrame) {
 extern "x86-interrupt" fn ata1(_: InterruptStackFrame) {
     pic::notify_eoi(Interrupts::AtaB1.as_u8());
 }
-
 
 extern "x86-interrupt" fn cmos_nmi(_: InterruptStackFrame) {
     time::rtc_tick();

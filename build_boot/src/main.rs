@@ -1,6 +1,8 @@
 use std::{
+    fs::{self},
+    io,
     path::{Path, PathBuf},
-    process::{Command, Child}, fs::{File, self}, io,
+    process::{Child, Command},
 };
 
 use config::Config;
@@ -23,7 +25,10 @@ pub fn main() {
 
         match fs::read_to_string(&path) {
             Ok(text) => Some(text),
-            Err(err) => {println!("Failed To Open File '{}' ({})", (&path).display(), err); None},
+            Err(err) => {
+                println!("Failed To Open File '{}' ({})", (&path).display(), err);
+                None
+            }
         }
     };
 
@@ -39,7 +44,7 @@ pub fn main() {
     let debug = if let Some(arg) = args.next() {
         match arg.as_str() {
             "--gdb" => true,
-            "--debug" => true, 
+            "--debug" => true,
             _ => false,
         }
     } else {
@@ -67,7 +72,7 @@ pub fn main() {
     if let Some(cfg) = manifest {
         run_from_cfg(&cfg);
     } else {
-        run_cmd.status();
+        run_cmd.status().expect("Failed To Launch Qemu...");
     }
 }
 
@@ -106,7 +111,6 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
     disk_image
 }
 
-
 pub fn run_from_cfg_bak(cfg: &str) -> Option<io::Result<Child>> {
     if let Ok(config) = &Config::from(cfg) {
         let mut command = Command::new(config.runner.clone());
@@ -120,25 +124,25 @@ pub fn run_from_cfg_bak(cfg: &str) -> Option<io::Result<Child>> {
 
         if let Some(disks) = config.get_disks() {
             for (drive_id, file) in disks {
-                if drive_id == "boot" {continue;}
+                if drive_id == "boot" {
+                    continue;
+                }
                 command.arg(format!("-{}", drive_id));
                 command.arg(file);
             }
         }
 
-        command.status().expect(&format!("Failed To Run {} on {}", bin, config.runner));
-
+        command
+            .status()
+            .expect(&format!("Failed To Run {} on {}", bin, config.runner));
     }
     None
 }
 
-
 pub fn run_from_cfg(cfg: &str) -> Option<io::Result<Child>> {
     if let Ok(config) = &Config::from(cfg) {
-
         let mut cmd = Command::new(config.runner.clone());
         cmd.args(config.to_args());
-
 
         cmd.status().expect("Failed To Run...");
     }

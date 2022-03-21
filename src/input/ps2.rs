@@ -165,8 +165,6 @@ impl PS2Controller {
         self.command(Command::EnablePort1)?;
         self.command(Command::EnablePort2)?;
 
-
-
         self.command(Command::ReadConfig)?;
         let mut cfg = Config::from(self.read_data()?);
         cfg.set(ConfigFlags::Port1IrqEnabled);

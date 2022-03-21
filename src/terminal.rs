@@ -184,8 +184,7 @@ impl TerminalWriter {
                 } else {
                     self.newline();
                 }
-            }
-            else if chr == '\r' {
+            } else if chr == '\r' {
                 if self.print_control {
                     self.put_char(chr)
                 } else {

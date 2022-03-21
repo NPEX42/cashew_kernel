@@ -6,30 +6,30 @@ pub const HEAP_SIZE: usize = 1024 * 1024 * 16; // 100 KiB
 #[global_allocator]
 static LINKED_LIST_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-use core::{alloc::Layout, panic, ptr::NonNull, sync::atomic::AtomicU64, cmp::Ordering, iter::Map};
+use core::{alloc::Layout, panic, ptr::NonNull};
 
-use alloc::vec::Vec;
 use bit_field::BitField;
-use bootloader::{BootInfo, boot_info::{MemoryRegions, self, MemoryRegionKind}};
+use bootloader::{
+    boot_info::{self, MemoryRegionKind, MemoryRegions},
+    BootInfo,
+};
 use conquer_once::spin::OnceCell;
 use linked_list_allocator::LockedHeap;
 use x86_64::{
-    structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, Size4KiB, PhysFrame},
-    VirtAddr, PhysAddr,
+    structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, PhysFrame, Size4KiB},
+    PhysAddr, VirtAddr,
 };
 
 use x86_64::structures::paging::PageTableFlags as PTFlags;
 
-use crate::{sprint, locked::Locked, println, klog};
+use crate::{klog, locked::Locked, println, sprint};
 
 use super::frames::BootInfoFrameAllocator;
-
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) -> Result<(), MapToError<Size4KiB>> {
-
     let mut memory_size = 0;
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
@@ -39,7 +39,6 @@ pub fn init_heap(
         Page::range_inclusive(heap_start_page, heap_end_page)
     };
 
-    
     let mut count = 0;
     let total = HEAP_SIZE / 4096;
     for page in page_range {
@@ -103,35 +102,34 @@ pub(super) fn _dealloc(ptr: NonNull<u8>, layout: Layout) {
     }
 }
 
-
 pub const PHYS_MEMORY_SIZE: usize = 256 << 24;
 pub const PHYS_MEMORY_PAGES: usize = PHYS_MEMORY_SIZE / 4096;
 pub const CHUNK_SIZE: usize = u128::BITS as usize;
-pub static mut FRAME_BITMAP: [u128; PHYS_MEMORY_PAGES / CHUNK_SIZE] = [0; PHYS_MEMORY_PAGES / CHUNK_SIZE];
+pub static mut FRAME_BITMAP: [u128; PHYS_MEMORY_PAGES / CHUNK_SIZE] =
+    [0; PHYS_MEMORY_PAGES / CHUNK_SIZE];
 pub static mut ALLOC_COUNT: usize = 0;
 pub static mut FREE_COUNT: usize = 0;
 pub struct BitmapAllocator;
 
-
 impl BitmapAllocator {
-
     pub fn free_count() -> usize {
-        unsafe {FREE_COUNT}
+        unsafe { FREE_COUNT }
     }
 
     pub fn used_count() -> usize {
-        unsafe {ALLOC_COUNT}
+        unsafe { ALLOC_COUNT }
     }
 
     fn alloc(frame_no: usize) {
-
         //klog!("Mapping Frame {:}\n", frame_no);
 
         let offset = frame_no / CHUNK_SIZE;
         let bit = frame_no % CHUNK_SIZE;
-        
+
         unsafe {
-            if offset >= FRAME_BITMAP.len() {return;}
+            if offset >= FRAME_BITMAP.len() {
+                return;
+            }
             FRAME_BITMAP[offset].set_bit(bit, true);
         }
     }
@@ -141,7 +139,9 @@ impl BitmapAllocator {
         let bit = frame_no % CHUNK_SIZE;
 
         unsafe {
-            if offset >= FRAME_BITMAP.len() {return;}
+            if offset >= FRAME_BITMAP.len() {
+                return;
+            }
             FRAME_BITMAP[offset].set_bit(bit, false);
         }
     }
@@ -154,11 +154,12 @@ impl BitmapAllocator {
         // transform to an iterator of frame start addresses
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
         // create `PhysFrame` types from the start addresses
-        let frames = frame_addresses.map(|addr| PhysFrame::<Size4KiB>::containing_address(PhysAddr::new(addr)));
+        let frames = frame_addresses
+            .map(|addr| PhysFrame::<Size4KiB>::containing_address(PhysAddr::new(addr)));
 
         let frame_count = frames.clone().count();
 
-        unsafe { 
+        unsafe {
             ALLOC_COUNT = frame_count;
             FREE_COUNT = PHYS_MEMORY_PAGES - ALLOC_COUNT;
         }
@@ -168,13 +169,14 @@ impl BitmapAllocator {
                 Self::alloc((frame.start_address().as_u64() / 4096) as usize + offset as usize);
             }
         }
-
     }
 
     pub fn next_free() -> Option<PhysFrame> {
         unsafe {
             for (index, block) in FRAME_BITMAP.iter().enumerate() {
-                if *block == u128::MAX {continue;}
+                if *block == u128::MAX {
+                    continue;
+                }
 
                 for bit in 0..128 {
                     if !block.get_bit(bit) {
@@ -183,7 +185,9 @@ impl BitmapAllocator {
 
                         Self::alloc(frame_no);
 
-                        return Some(PhysFrame::containing_address(PhysAddr::new_truncate(start as u64)));
+                        return Some(PhysFrame::containing_address(PhysAddr::new_truncate(
+                            start as u64,
+                        )));
                     }
                 }
             }
@@ -191,15 +195,10 @@ impl BitmapAllocator {
             None
         }
     }
-
-    
- }
-
+}
 
 unsafe impl FrameAllocator<Size4KiB> for BitmapAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
         Self::next_free()
     }
 }
-
-

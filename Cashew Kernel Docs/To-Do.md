@@ -2,7 +2,7 @@
 ---
 
 ## Urgent
-- [x] ACPI Shutdown - https://wiki.osdev.org/ACPI
+
 - [x] Physical Memory Manager
 
 
@@ -13,8 +13,9 @@
 	- [ ] Files
 	- [ ] Device Formatting
 	- [ ] CashewFS 
-- [x] ACPI I/O 
+- [ ] ACPI I/O 
 	- [ ] ACPI Restart
+	- [x] ACPI Shutdown - https://wiki.osdev.org/ACPI
 - [ ] PCI Device I/O 
 	- [ ] PCI Bus Enumeration
 	- [ ] Network Drivers 
@@ -39,6 +40,10 @@
 			- [x] PI/O Mode
 			- [ ] DMA Mode
 		- [ ] Memory Disk 
+
+## Refactoring
+ - [ ] Proper API Module - cashew::api
+	 - [ ] 
 
 
 ## Backburner

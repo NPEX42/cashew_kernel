@@ -1,8 +1,8 @@
 pub mod palletes;
 
-use font8x8::UnicodeFonts;
-use core::ops::*;
 use crate::{fonts, pit, vga};
+use core::ops::*;
+use font8x8::UnicodeFonts;
 
 const HEIGHT: usize = 480;
 const WIDTH: usize = 640;
@@ -39,7 +39,7 @@ impl Pixel {
             alpha: a,
             blue: b,
             green: g,
-            red: r
+            red: r,
         }
     }
 
@@ -49,7 +49,7 @@ impl Pixel {
         let b = (self.blue as u32) << 0;
 
         r | g | b
-    } 
+    }
 }
 
 #[repr(transparent)]
@@ -145,7 +145,6 @@ impl Frame {
         }
     }
 }
-
 
 impl BitOr for Pixel {
     type Output = Self;

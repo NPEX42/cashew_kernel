@@ -73,7 +73,8 @@ impl CMOS {
 
         let b = self.read_register(Register::B);
 
-        if b & 0x04 == 0 { // BCD Mode
+        if b & 0x04 == 0 {
+            // BCD Mode
             rtc.second = (rtc.second & 0x0F) + ((rtc.second / 16) * 10);
             rtc.minute = (rtc.minute & 0x0F) + ((rtc.minute / 16) * 10);
             rtc.hour = ((rtc.hour & 0x0F) + (((rtc.hour & 0x70) / 16) * 10)) | (rtc.hour & 0x80);
@@ -82,7 +83,8 @@ impl CMOS {
             rtc.year = (rtc.year & 0x0F) + ((rtc.year / 16) * 10);
         }
 
-        if (b & 0x02 == 0) && (rtc.hour & 0x80 == 0) { // 12 hour format
+        if (b & 0x02 == 0) && (rtc.hour & 0x80 == 0) {
+            // 12 hour format
             rtc.hour = ((rtc.hour & 0x7F) + 12) % 24;
         }
 

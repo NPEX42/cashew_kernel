@@ -5,21 +5,27 @@ use crate::sprint;
 /// Default Bucket Size, Size - 2KB
 pub const BUCKET_COUNT: usize = 256;
 
-pub struct HashMap<V: Copy>  where V: core::marker::Copy {
+pub struct HashMap<V: Copy>
+where
+    V: core::marker::Copy,
+{
     buckets: [Option<V>; BUCKET_COUNT],
 }
 
-impl<V> HashMap<V> where V: Copy {
+impl<V> HashMap<V>
+where
+    V: Copy,
+{
     pub const fn new() -> Self {
         Self {
-            buckets: [None; BUCKET_COUNT]
+            buckets: [None; BUCKET_COUNT],
         }
     }
 
-    pub fn insert(&mut self, key: &String,  value: V) -> bool {
+    pub fn insert(&mut self, key: &String, value: V) -> bool {
         let hash = super::shift_hash::hash_u16(key.as_bytes());
 
-        sprint!("'{}' --(hash)--> {:04X}\n", key ,hash);
+        sprint!("'{}' --(hash)--> {:04X}\n", key, hash);
         let index = hash as usize & (BUCKET_COUNT - 1);
         if self.buckets[index].is_none() {
             self.buckets[index] = Some(value);
@@ -35,4 +41,3 @@ impl<V> HashMap<V> where V: Copy {
         self.buckets[hash as usize]
     }
 }
-

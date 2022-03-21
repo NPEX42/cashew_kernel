@@ -1,6 +1,9 @@
 use core::ops::{Index, IndexMut};
 
-use x86_64::{structures::paging::{self, PageTable, page_table::PageTableEntry}, VirtAddr};
+use x86_64::{
+    structures::paging::{self, page_table::PageTableEntry, PageTable},
+    VirtAddr,
+};
 
 use crate::fuse::Fuse;
 
@@ -22,7 +25,7 @@ pub unsafe fn current_l4_table(offset: VirtAddr) -> &'static mut paging::PageTab
 
 use x86_64::structures::paging::OffsetPageTable;
 
-use super::{PHYSICAL_OFFSET, pagetable_at_frame};
+use super::{pagetable_at_frame, PHYSICAL_OFFSET};
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -34,7 +37,6 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
     let level_4_table = current_l4_table(physical_memory_offset);
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
-
 
 pub struct PageTableWrapper(paging::PageTable);
 
@@ -48,7 +50,9 @@ impl PageTableWrapper {
     }
 
     pub fn next_pt(&self, index: usize) -> Option<Self> {
-        if self.0[index].is_unused() {return None;}
+        if self.0[index].is_unused() {
+            return None;
+        }
         unsafe {
             if let Ok(frame) = self[index].frame() {
                 return Some(Self::from(pagetable_at_frame(frame).clone()));
@@ -57,7 +61,6 @@ impl PageTableWrapper {
             }
         }
     }
-    
 }
 
 impl Index<usize> for PageTableWrapper {
@@ -66,10 +69,10 @@ impl Index<usize> for PageTableWrapper {
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
     }
-} 
+}
 
 impl IndexMut<usize> for PageTableWrapper {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
     }
-} 
+}

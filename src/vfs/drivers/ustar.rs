@@ -1,19 +1,26 @@
-use core::{fmt::{Display}};
+use core::fmt::Display;
 
-use alloc::{string::{String, ToString}, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 
-use crate::{vfs::block::Block, device::{BlockAddr, self}, sprint};
+use crate::{
+    device::{self, BlockAddr},
+    sprint,
+    vfs::block::Block,
+};
 
-#[derive(PartialEq, Debug, Eq, PartialOrd, Ord,Clone, Copy, Default,Hash)]
+#[derive(PartialEq, Debug, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(u8)]
 pub enum FileType {
-    Normal =    0,
-    HardLink =  1,
-    SymLink =   2,
-    CharDev =   3,
-    BlockDev =  4,
+    Normal = 0,
+    HardLink = 1,
+    SymLink = 2,
+    CharDev = 3,
+    BlockDev = 4,
     Directory = 5,
-    FIFO      = 6,
+    FIFO = 6,
     Contigous = 7,
 
     #[default]
@@ -33,29 +40,26 @@ impl FileType {
             7 => Self::Contigous,
 
             _ => Self::Unknown,
-
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct FileInfo {
     name: String,
     blocks: Vec<Block>,
     size: u32,
-    filetype: FileType
+    filetype: FileType,
 }
 
 impl FileInfo {
-
     pub fn to_string(&self) -> String {
         String::from_utf8(self.to_vec()).expect("Failed To Load File To String...")
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
         let mut v = Vec::new();
-        let mut  count = 0;
+        let mut count = 0;
         'block_loop: for block in self.blocks() {
             for byte in block.data() {
                 v.push(*byte);
@@ -86,13 +90,12 @@ impl FileInfo {
         Err(())
     }
 
-
     pub fn size(&self) -> usize {
         self.size as usize
     }
 
     pub fn data_block_count(&self) -> usize {
-        self.size() / 512 + if self.size() % 512 > 0 {1} else {0}
+        self.size() / 512 + if self.size() % 512 > 0 { 1 } else { 0 }
     }
 
     pub fn filetype(&self) -> FileType {
@@ -105,9 +108,11 @@ impl FileInfo {
         //sprint!("Loaded Block #{}\n",addr);
 
         let mut name_end = 0;
-        
+
         for _ in 0..100 {
-            if info.data()[name_end] == 0 {break;}
+            if info.data()[name_end] == 0 {
+                break;
+            }
 
             name_end += 1;
         }
@@ -118,21 +123,21 @@ impl FileInfo {
         let size: u32 = u32::from_str_radix(&size, 8).unwrap_or(0);
         //sprint!("Size: {} Bytes\n", size);
         let mut blocks = Vec::new();
-        let block_len = (size / 512) + if size % 512 > 0 {1} else {0};
+        let block_len = (size / 512) + if size % 512 > 0 { 1 } else { 0 };
 
-        let ty: u8 = u8::from_str_radix(&String::from_utf8_lossy(&info.data()[156..157].to_vec()), 8).unwrap_or(255);
-        
+        let ty: u8 =
+            u8::from_str_radix(&String::from_utf8_lossy(&info.data()[156..157].to_vec()), 8)
+                .unwrap_or(255);
+
         for i in 1..=block_len {
             blocks.push(Block::read(addr + i).unwrap());
         }
-        Ok(
-            Self {
-                name,
-                blocks,
-                size,
-                filetype: FileType::from_u8(ty),
-            }
-        )
+        Ok(Self {
+            name,
+            blocks,
+            size,
+            filetype: FileType::from_u8(ty),
+        })
     }
 
     pub fn blocks(&self) -> &Vec<Block> {
@@ -146,8 +151,6 @@ impl FileInfo {
     pub fn name(&self) -> &str {
         &self.name
     }
-
-    
 }
 
 impl Display for FileInfo {

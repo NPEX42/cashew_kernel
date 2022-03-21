@@ -2,7 +2,6 @@
 #![no_main]
 #![feature(custom_test_frameworks)]
 #![feature(asm)]
-
 #![test_runner(cashew_kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 extern crate alloc;
@@ -12,10 +11,26 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{*, csh::{ShellArgs, ExitCode}, arch::{cmos, vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT}}, mem::PTFlags, vfs::{drivers::{disk_map::DiskMap, csh_fat::{self, FAT, FileEntry, File}}, block::Block}, time::time};
+use cashew_kernel::{
+    arch::{
+        cmos,
+        vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT},
+    },
+    csh::{ExitCode, ShellArgs},
+    mem::PTFlags,
+    time::time,
+    vfs::{
+        block::Block,
+        drivers::{
+            csh_fat::{self, superblock, File, FileEntry, DISK_SIZE, FAT},
+            disk_map::DiskMap,
+        },
+    },
+    *,
+};
 use device::*;
 use graphics_2d::*;
-use x86_64::{VirtAddr, structures::paging::Size4KiB, PhysAddr};
+use x86_64::{structures::paging::Size4KiB, PhysAddr, VirtAddr};
 
 #[cfg(not(test))]
 entry_point!(kernel_main);
@@ -27,79 +42,27 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         cashew_kernel::boot(boot_info);
         println!("Booting Complete, Press Any Key To continue");
 
-        let block_count = 1;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::read((i as u32) % 16u32);
+        if superblock::validate() {
+            println!(
+                "CSH FAT V{}.{} ({} Data Blocks - {} Allocated)",
+                superblock::version_major(),
+                superblock::version_minor(),
+                superblock::data_size().unwrap(),
+                superblock::alloc_count()
+            );
+
+            superblock::preload();
+        } else {
+            println!("Unrecognised FileSystem, Run 'format' to Format The Drive");
         }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
 
-        klog!("1x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-        let block_count = 10;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::read((i as u32) % 16u32);
-        }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
-
-        klog!("10x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-        let block_count = 100;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::read((i as u32) % 16u32);
-        }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
-
-        klog!("100x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-        klog!("Write Tests ------------------");
-
-        let block_count = 1;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::empty((i as u32) % 16u32).write();
-        }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
-
-        klog!("1x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-        let block_count = 10;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::empty((i as u32) % 16u32).write();
-        }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
-
-        klog!("10x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-        let block_count = 100;
-        let start = time::ticks();
-        for i in 0..block_count {
-            Block::empty((i as u32) % 16u32).write();
-        }
-        let end = time::ticks();
-        let ticks = end - start;
-        let ticks_per_block = ticks as f32 / block_count as f32;
-
-        klog!("100x: {} ({} / Block)\n ", ticks, ticks_per_block );
-
-
+        ata::cache_stats();
 
         csh::main(Vec::new());
         cashew_kernel::shutdown();
-    }   
+    } else {
+        kerr!("Failed To Find Framebuffer, Please File An Issue On Github.\n");
+    }
     loop {
         cashew_kernel::arch::pause();
     }
@@ -113,9 +76,6 @@ pub extern "C" fn _start() -> ! {
     loop {}
 }
 
-
 pub unsafe extern "C" fn userspace_prog_1() {
     asm!("nop");
 }
-
-

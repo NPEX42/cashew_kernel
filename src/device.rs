@@ -2,14 +2,18 @@ use core::ops::Range;
 
 use alloc::string::String;
 
-use crate::{ata, sprint, csh::{ShellArgs, ExitCode, ErrorCode}, println, vfs::block::Block};
+use crate::{
+    ata,
+    csh::{ErrorCode, ExitCode, ShellArgs},
+    println, sprint,
+    vfs::block::Block,
+};
 
 pub type BlockAddr = u32;
 
 static mut MOUNT: Option<Device> = None;
 
 pub fn mount_main(args: ShellArgs) -> ExitCode {
-
     if args.len() < 2 {
         println!("Usage: {} [hda|hdb|hdc|hdd]", args[0]);
         return ExitCode::Error(ErrorCode::Usage);
@@ -49,8 +53,14 @@ pub trait BlockDeviceIO {
     fn read(&self, block: BlockAddr) -> Result<[u8; ata::BLOCK_SIZE], ()>;
     fn write(&mut self, block: BlockAddr, data: &[u8]) -> Result<(), ()>;
 
-    fn read_range(&self, bounds: Range<BlockAddr>, buffer: &mut [[u8; ata::BLOCK_SIZE]]) -> Result<(), ()> {
-        if buffer.len() < bounds.len() { return Err(()); }
+    fn read_range(
+        &self,
+        bounds: Range<BlockAddr>,
+        buffer: &mut [[u8; ata::BLOCK_SIZE]],
+    ) -> Result<(), ()> {
+        if buffer.len() < bounds.len() {
+            return Err(());
+        }
 
         for (index, addr) in bounds.enumerate() {
             buffer[index] = self.read(addr)?;
@@ -59,8 +69,14 @@ pub trait BlockDeviceIO {
         Ok(())
     }
 
-    fn write_range(&mut self, bounds: Range<BlockAddr>, buffer: &[[u8; ata::BLOCK_SIZE]]) -> Result<(), ()> {
-        if buffer.len() < bounds.len() { return Err(()); }
+    fn write_range(
+        &mut self,
+        bounds: Range<BlockAddr>,
+        buffer: &[[u8; ata::BLOCK_SIZE]],
+    ) -> Result<(), ()> {
+        if buffer.len() < bounds.len() {
+            return Err(());
+        }
 
         for (index, addr) in bounds.enumerate() {
             self.write(addr, &buffer[index])?;
@@ -85,10 +101,18 @@ pub enum Device {
 }
 
 impl Device {
-    pub fn hda() -> Self { Self::Ata(0,0) }
-    pub fn hdb() -> Self { Self::Ata(0,1) }
-    pub fn hdc() -> Self { Self::Ata(1,0) }
-    pub fn hdd() -> Self { Self::Ata(1,1) }
+    pub fn hda() -> Self {
+        Self::Ata(0, 0)
+    }
+    pub fn hdb() -> Self {
+        Self::Ata(0, 1)
+    }
+    pub fn hdc() -> Self {
+        Self::Ata(1, 0)
+    }
+    pub fn hdd() -> Self {
+        Self::Ata(1, 1)
+    }
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
@@ -102,9 +126,6 @@ impl Device {
 }
 
 impl BlockDeviceIO for Device {
-
-    
-
     fn block_count(&self) -> Result<usize, ()> {
         match self {
             Device::Ata(bus, drive) => ata::get_sector_count(*bus, *drive),
@@ -155,7 +176,6 @@ pub fn read(block: BlockAddr) -> Result<[u8; 512], ()> {
     }
 }
 
-
 pub fn read_block(block: BlockAddr) -> Result<Block, ()> {
     if let Some(dev) = unsafe { &mut MOUNT } {
         let data = dev.read(block)?;
@@ -192,5 +212,3 @@ pub fn info() -> Result<DeviceInfo, ()> {
 pub fn is_mounted() -> bool {
     unsafe { MOUNT.is_some() }
 }
-
-

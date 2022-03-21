@@ -1,13 +1,13 @@
-use std::collections::HashMap;
 use serde_derive::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub runner: String, 
+    pub runner: String,
     pub run_args: Option<Vec<String>>,
     pub debug_args: Option<Vec<String>>,
     pub disks: Option<HashMap<String, String>>,
-    machine: Option<Machine>
+    machine: Option<Machine>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,6 +26,7 @@ impl Config {
     }
 
     /// Get The Debug Args If Present. If There Are No Debug Arguments, The Run Args Are Returned If Present.
+    #[allow(unused)]
     pub fn debug_args(&self) -> Option<&Vec<String>> {
         if self.debug_args.is_none() {
             self.run_args.as_ref()
@@ -44,18 +45,20 @@ impl Config {
 
     pub fn get_disks(&self) -> Option<Vec<(&String, &String)>> {
         if let Some(disks) = &self.disks {
-           return Some(disks.into_iter().collect());
+            return Some(disks.into_iter().collect());
         } else {
             return None;
         }
     }
 
-
     pub fn to_args(&self) -> Vec<String> {
         let mut args: Vec<String> = Vec::new();
 
         args.push("-drive".into());
-        args.push(format!("format=raw,file={}", self.get_disk("boot").unwrap()));
+        args.push(format!(
+            "format=raw,file={}",
+            self.get_disk("boot").unwrap()
+        ));
 
         if let Some(machine) = &self.machine {
             args.push("-m".into());
@@ -72,16 +75,15 @@ impl Config {
                 args.push("stdio".into());
             }
 
-
             for (name, disk) in self.get_disks().unwrap().iter() {
-                if name.eq_ignore_ascii_case("boot") {continue;}
+                if name.eq_ignore_ascii_case("boot") {
+                    continue;
+                }
 
                 args.push(format!("-{}", name));
                 args.push(disk.to_string());
             }
-
         }
-
 
         println!("Args: {:?}.", args);
         args

@@ -2,8 +2,8 @@ use bit_field::BitField;
 
 use crate::{
     csh::{ExitCode, ShellArgs},
-    device::{self, BlockAddr},
-    input, klog, print, println, sprint,
+    device::{self},
+    input, print, println,
     vfs::block::Block,
 };
 const SUPERBLOCK_ADDR: u32 = 0;
@@ -195,7 +195,7 @@ pub fn preload() {
     println!();
 }
 
-pub fn csh_format(args: ShellArgs) -> ExitCode {
+pub fn csh_format(_args: ShellArgs) -> ExitCode {
     let blocks = device::info().unwrap().blocks;
     let part_size: u32 = input::prompt("Input Partition Size: ").parse().unwrap();
     let part_size = part_size.min(blocks as u32);

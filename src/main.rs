@@ -12,25 +12,10 @@ use alloc::vec::Vec;
 use bootloader::entry_point;
 use bootloader::BootInfo;
 use cashew_kernel::{
-    arch::{
-        cmos,
-        vmm::{PTF_PRESENT_BIT, PTF_WRITABLE_BIT},
-    },
-    csh::{ExitCode, ShellArgs},
-    mem::PTFlags,
-    time::time,
-    vfs::{
-        block::Block,
-        drivers::{
-            csh_fat::{self, superblock, File, FileEntry, DISK_SIZE, FAT},
-            disk_map::DiskMap,
-        },
-    },
-    *,
+    csh,
+    vfs::drivers::csh_fat::*,    
 };
-use device::*;
-use graphics_2d::*;
-use x86_64::{structures::paging::Size4KiB, PhysAddr, VirtAddr};
+use cashew_kernel::{graphics_2d::*, println, ata, kerr};
 
 #[cfg(not(test))]
 entry_point!(kernel_main);

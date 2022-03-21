@@ -5,7 +5,7 @@ use alloc::{
 };
 
 use crate::{
-    api::fs::csh_fat::superblock, arch, data::hashmap::HashMap, device, input, mem, println,
+    api::fs::csh_fat::superblock, device, input, mem, println,
     sprint, time,
 };
 

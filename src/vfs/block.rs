@@ -6,7 +6,6 @@ use crate::{
     ata,
     device::{self, *},
     klog,
-    mem::allocator::BitmapAllocator,
 };
 
 use super::{drivers::csh_fat::BlockBitmap, BlockAllocator};
@@ -102,7 +101,7 @@ impl Block {
 pub struct LinkedBlock {
     block: Block,
 }
-
+#[allow(deprecated)]
 impl TryInto<LinkedBlock> for Block {
     type Error = ();
     fn try_into(self) -> Result<LinkedBlock, Self::Error> {
@@ -219,7 +218,7 @@ impl LinkedBlock {
         buf
     }
 }
-
+#[allow(deprecated)]
 impl Display for LinkedBlock {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "[{:08x}]", self.addr())?;

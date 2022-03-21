@@ -8,7 +8,7 @@ macro_rules! klog {
 
     ($fmt:expr) => {
         //$crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
-        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
+        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()))
         //$crate::terminal::swap();
     };
 }

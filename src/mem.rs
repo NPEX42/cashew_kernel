@@ -1,4 +1,4 @@
-use core::{alloc::Layout, ops::Add, ptr::NonNull, sync::atomic::AtomicU64};
+use core::{alloc::Layout, ptr::NonNull, sync::atomic::AtomicU64};
 
 use bootloader::{
     boot_info::{MemoryRegion, MemoryRegions},
@@ -9,9 +9,7 @@ use x86_64::{
     instructions::interrupts::without_interrupts,
     registers::control::Cr3,
     structures::paging::{
-        page::{self, PageRange},
-        page_table::PageTableEntry,
-        FrameAllocator, Mapper, PageTable, PhysFrame, Size4KiB,
+        Mapper, PageTable, PhysFrame, Size4KiB,
     },
 };
 
@@ -113,7 +111,6 @@ pub fn dealloc(ptr: NonNull<u8>, size: usize, align: usize) {
 }
 
 pub unsafe fn clone_pagetable() -> PageTable {
-    use x86_64::registers::control::Cr3;
 
     let (level_4_table_frame, _) = Cr3::read();
 
@@ -212,9 +209,6 @@ pub fn debug_simple_mapping_exc(start: VirtAddr, end: VirtAddr) {
     }
 }
 
-unsafe fn pagetable_at(addr: VirtAddr) -> PageTable {
-    (*addr.as_mut_ptr::<PageTable>()).clone()
-}
 
 pub fn pagetable_at_frame(frame: PhysFrame) -> &'static PageTable {
     let phys = frame.start_address();
@@ -247,7 +241,7 @@ pub fn map_virt_to_phys(virt: VirtAddr, phys: PhysAddr, flags: PTFlags) {
 }
 
 pub fn map_virt(virt: VirtAddr, flags: PTFlags) {
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&*MEMORY_MAP.unwrap()) };
+    let _frame_allocator = unsafe { BootInfoFrameAllocator::init(&*MEMORY_MAP.unwrap()) };
     if let Some(frame) = BitmapAllocator::next_free() {
         klog!(
             "Mapping ${:x} --> ${:x}\n",
@@ -297,8 +291,8 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     width = width.max(free.log10());
     width = width.max(used.log10());
     width = width.max(total.log10());
-    unsafe { width = width.max((BitmapAllocator::free_count() as u32).log10()) }
-    unsafe { width = width.max((BitmapAllocator::used_count() as u32).log10()) }
+    width = width.max((BitmapAllocator::free_count() as u32).log10());
+    width = width.max((BitmapAllocator::used_count() as u32).log10());
     println!("Used:  {:0w$} Bytes", used, w = width as usize);
     println!("Free:  {:0w$} Bytes", free, w = width as usize);
     println!("Total: {:0w$} Bytes", total, w = width as usize);

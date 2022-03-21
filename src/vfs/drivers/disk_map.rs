@@ -13,6 +13,7 @@ pub enum EntryKind {
     Reserved,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct DiskEntry {
     kind: EntryKind,

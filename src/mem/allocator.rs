@@ -10,10 +10,10 @@ use core::{alloc::Layout, panic, ptr::NonNull};
 
 use bit_field::BitField;
 use bootloader::{
-    boot_info::{self, MemoryRegionKind, MemoryRegions},
+    boot_info::{MemoryRegionKind},
     BootInfo,
 };
-use conquer_once::spin::OnceCell;
+
 use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, PhysFrame, Size4KiB},
@@ -22,15 +22,15 @@ use x86_64::{
 
 use x86_64::structures::paging::PageTableFlags as PTFlags;
 
-use crate::{klog, locked::Locked, println, sprint};
+use crate::{sprint};
 
-use super::frames::BootInfoFrameAllocator;
+
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) -> Result<(), MapToError<Size4KiB>> {
-    let mut memory_size = 0;
+    let _memory_size = 0;
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
         let heap_end = heap_start + HEAP_SIZE - 1u64;
@@ -134,7 +134,7 @@ impl BitmapAllocator {
         }
     }
 
-    fn free(frame_no: usize) {
+    fn _free(frame_no: usize) {
         let offset = frame_no / CHUNK_SIZE;
         let bit = frame_no % CHUNK_SIZE;
 

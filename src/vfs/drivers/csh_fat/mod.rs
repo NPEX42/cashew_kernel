@@ -7,15 +7,12 @@ use alloc::{
 use bit_field::BitField;
 
 use crate::{
-    kerr, klog,
-    mem::allocator::BitmapAllocator,
-    println,
+    klog,
     vfs::{
-        block::{self, Block, LinkedBlock},
+        block::{Block, LinkedBlock},
         BlockAllocator,
     },
 };
-const SUPERBLOCK_ADDR: u32 = 0;
 pub const FAT_START: usize = 1;
 pub const FAT_SIZE: usize = 256;
 pub const ENTRY_SIZE: usize = 32;
@@ -198,24 +195,25 @@ pub struct FileEntry {
 
     pub data_start: u32,
 }
-
+#[allow(deprecated)]
 impl FileEntry {
     pub fn to_vec(&self) -> Result<Vec<u8>, ()> {
         let mut block = LinkedBlock::read(self.data_start)?;
         Ok(block.to_vec_sized(self.size as usize))
     }
 
+    
     pub fn set_data(&mut self, data: &[u8]) -> Result<(), ()> {
         self.size = data.len() as u32;
 
         if let Some(mut head) = self.head() {
             klog!("Found Head ({})...\n", head.addr());
-            head.set_data(data);
+            head.set_data(data).expect("Failed To Set Data");
         } else {
             klog!("No Head Found...\n");
             self.data_start = BlockBitmap::get().allocate().unwrap().addr();
             let mut head = self.head().unwrap();
-            head.set_data(data);
+            head.set_data(data).expect("Failed To Set Data");
         }
 
         Ok(())
@@ -312,13 +310,13 @@ impl File {
     pub fn write(&mut self, data: &[u8]) -> usize {
         for i in 0..data.len() {
             if self.pos >= self.data.len() {
-                self.sync();
+                self.sync().expect("Failed To Sync File Data");
                 return i;
             };
             self.data[self.pos] = data[i];
             self.pos += 1;
         }
-        self.sync();
+        self.sync().expect("Failed To Sync File Data");
         data.len()
     }
 }

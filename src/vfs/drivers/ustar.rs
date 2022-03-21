@@ -1,13 +1,12 @@
 use core::fmt::Display;
 
 use alloc::{
-    string::{String, ToString},
+    string::{String},
     vec::Vec,
 };
 
 use crate::{
     device::{self, BlockAddr},
-    sprint,
     vfs::block::Block,
 };
 

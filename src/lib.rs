@@ -35,7 +35,6 @@ pub mod vga;
 
 pub mod post;
 
-pub mod simple_vm;
 pub mod wasi;
 
 extern crate alloc;

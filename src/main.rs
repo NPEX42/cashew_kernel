@@ -11,11 +11,8 @@ use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{
-    csh,
-    vfs::drivers::csh_fat::*,    
-};
-use cashew_kernel::{graphics_2d::*, println, ata, kerr};
+use cashew_kernel::{ata, graphics_2d::*, kerr, println};
+use cashew_kernel::{csh, vfs::drivers::csh_fat::*};
 
 #[cfg(not(test))]
 entry_point!(kernel_main);

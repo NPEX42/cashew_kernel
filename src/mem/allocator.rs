@@ -9,10 +9,7 @@ static LINKED_LIST_ALLOCATOR: LockedHeap = LockedHeap::empty();
 use core::{alloc::Layout, panic, ptr::NonNull};
 
 use bit_field::BitField;
-use bootloader::{
-    boot_info::{MemoryRegionKind},
-    BootInfo,
-};
+use bootloader::{boot_info::MemoryRegionKind, BootInfo};
 
 use linked_list_allocator::LockedHeap;
 use x86_64::{
@@ -22,9 +19,7 @@ use x86_64::{
 
 use x86_64::structures::paging::PageTableFlags as PTFlags;
 
-use crate::{sprint};
-
-
+use crate::sprint;
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,

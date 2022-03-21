@@ -8,9 +8,7 @@ use conquer_once::spin::OnceCell;
 use x86_64::{
     instructions::interrupts::without_interrupts,
     registers::control::Cr3,
-    structures::paging::{
-        Mapper, PageTable, PhysFrame, Size4KiB,
-    },
+    structures::paging::{Mapper, PageTable, PhysFrame, Size4KiB},
 };
 
 pub use x86_64::structures::paging::Page;
@@ -111,7 +109,6 @@ pub fn dealloc(ptr: NonNull<u8>, size: usize, align: usize) {
 }
 
 pub unsafe fn clone_pagetable() -> PageTable {
-
     let (level_4_table_frame, _) = Cr3::read();
 
     let phys = level_4_table_frame.start_address();
@@ -208,7 +205,6 @@ pub fn debug_simple_mapping_exc(start: VirtAddr, end: VirtAddr) {
         }
     }
 }
-
 
 pub fn pagetable_at_frame(frame: PhysFrame) -> &'static PageTable {
     let phys = frame.start_address();

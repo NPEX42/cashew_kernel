@@ -1,9 +1,6 @@
 use core::fmt::Display;
 
-use alloc::{
-    string::{String},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 
 use crate::{
     device::{self, BlockAddr},

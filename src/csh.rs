@@ -4,10 +4,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{
-    api::fs::csh_fat::superblock, device, input, mem, println,
-    sprint, time,
-};
+use crate::{api::fs::csh_fat::superblock, device, input, mem, println, sprint, time};
 
 pub mod cat;
 pub mod ls;

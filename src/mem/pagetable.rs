@@ -53,11 +53,11 @@ impl PageTableWrapper {
         if self.0[index].is_unused() {
             return None;
         }
-            if let Ok(frame) = self[index].frame() {
-                return Some(Self::from(pagetable_at_frame(frame).clone()));
-            } else {
-                return None;
-            }
+        if let Ok(frame) = self[index].frame() {
+            return Some(Self::from(pagetable_at_frame(frame).clone()));
+        } else {
+            return None;
+        }
     }
 }
 

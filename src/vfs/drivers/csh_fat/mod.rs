@@ -202,7 +202,6 @@ impl FileEntry {
         Ok(block.to_vec_sized(self.size as usize))
     }
 
-    
     pub fn set_data(&mut self, data: &[u8]) -> Result<(), ()> {
         self.size = data.len() as u32;
 

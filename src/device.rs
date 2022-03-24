@@ -1,6 +1,6 @@
 use core::{ops::Range, fmt::Write};
 
-use alloc::{string::String, boxed::Box};
+use alloc::{string::String};
 
 use crate::{
     ata,
@@ -319,7 +319,7 @@ pub mod stdout {
 
     pub fn write_fmt(args: Arguments) {
         if let Some(dev) = super::stdout() {
-            dev.write_fmt(args);
+            dev.write_fmt(args).expect("Failed To Write To Stdout.");
         }
     }
 }

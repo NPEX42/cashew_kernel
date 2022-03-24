@@ -4,7 +4,7 @@ use crate::{
     csh::{ExitCode, ShellArgs},
     device::{self},
     input, print, println,
-    vfs::block::Block, terminal, graphics_2d::{Pixel, ProgressBar},
+    vfs::block::Block, terminal, graphics_2d::{Pixel, ProgressBar}, vga::screen_width,
 };
 const SUPERBLOCK_ADDR: u32 = 0;
 const SIGNATURE: &[u8; 3] = b"CFS";
@@ -223,15 +223,23 @@ pub fn preload() {
 
 pub fn csh_format(_args: ShellArgs) -> ExitCode {
     let blocks = device::info().unwrap().blocks;
-    let part_size: u32 = input::prompt("Input Partition Size: ").parse().unwrap();
+    let part_size: u32 = (input::prompt("Input Partition Size (MB): ").parse::<u32>().unwrap() * (1 << 20)) / 512;
     let part_size = part_size.min(blocks as u32);
-    let data_size: u32 = input::prompt("Input Data Size: ").parse().unwrap();
+    let data_size: u32 = (input::prompt("Input Data Size (MB): ").parse::<u32>().unwrap() * (1 << 20)) / 512;
     let erase_drive: bool =
-        input::prompt("Erase Drive Beforehand? [y/N]").eq_ignore_ascii_case("y");
+        input::prompt("Erase Drive Beforehand? [y/N]: ").eq_ignore_ascii_case("y");
     if erase_drive {
+        let mut pb = ProgressBar::new(
+            0.0, 
+            part_size as f32, 
+            Pixel::hex(0xFFFFFF), 
+            (screen_width() - 2) as f32
+        );
         for i in 0..part_size {
             Block::empty(i).write();
             print!("Erasing Drive - {}/{}\r", i, part_size);
+            pb.update(i as f32);
+            pb.draw_below_line(2);
         }
     }
     println!();
@@ -247,4 +255,8 @@ pub fn csh_format(_args: ShellArgs) -> ExitCode {
     println!();
 
     ExitCode::Ok
+}
+
+pub(crate) fn data_index_to_lba(index: u32) -> u32 {
+    partition_size().unwrap() - index
 }

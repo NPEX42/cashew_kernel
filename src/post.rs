@@ -1,8 +1,7 @@
-use crate::{csh, klog, vfs::block::Block};
+use crate::{klog, vfs::block::Block};
 
 pub fn self_test() {
-    csh::init().expect("Failed To Initialize The Shell...");
-    csh::exec("mount hdb");
+    
 
     klog!("POST::Block::Free\n");
     let mut block = Block::allocate().unwrap();

@@ -36,6 +36,8 @@
 		- [x] Terminal
 		- [x] Serial  
 		- [ ] FIFO Pipe
+		- [ ] Null device
+		- [ ] PRNG
 	- [ ] Block Devices
 		- [ ] ATA
 			- [x] PI/O Mode

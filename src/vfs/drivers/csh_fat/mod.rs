@@ -1,3 +1,10 @@
+mod bitmap;
+mod api;
+mod inode;
+mod index_block;
+
+pub use api::*;
+
 use core::fmt::Display;
 
 use alloc::{

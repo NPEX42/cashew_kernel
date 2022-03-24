@@ -9,7 +9,7 @@
         "state": {
           "type": "markdown",
           "state": {
-            "file": "To-Do.md",
+            "file": "Cashew FS.md",
             "mode": "source",
             "source": false
           }
@@ -53,42 +53,19 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 185
   },
   "right": {
     "id": "165b0c71bfd39fe2",
     "type": "split",
-    "children": [
-      {
-        "id": "35d596fa432a71d5",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "351b788d72e5e83d",
-            "type": "leaf",
-            "state": {
-              "type": "backlink",
-              "state": {
-                "file": "To-Do.md",
-                "collapseAll": false,
-                "extraContext": false,
-                "sortOrder": "alphabetical",
-                "showSearch": false,
-                "searchQuery": "",
-                "backlinkCollapsed": false,
-                "unlinkedCollapsed": true
-              }
-            }
-          }
-        ]
-      }
-    ],
+    "children": [],
     "direction": "horizontal",
     "width": 300,
     "collapsed": true
   },
   "active": "b5c99e8b57a71921",
   "lastOpenFiles": [
+    "Cashew FS.md",
     "To-Do.md"
   ]
 }

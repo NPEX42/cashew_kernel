@@ -1,6 +1,6 @@
 pub mod palletes;
 
-use crate::{fonts, pit, vga::{self, draw_filled_rect}};
+use crate::{fonts, pit, vga::{self}, terminal};
 use core::ops::*;
 use font8x8::UnicodeFonts;
 
@@ -58,10 +58,6 @@ pub struct Frame {
 }
 
 impl Frame {
-
-    pub fn rect(x: usize, y: usize, w: usize, h: usize, fill: Pixel) {
-        
-    }
 
     pub fn shift_up(&mut self, amount: usize) {
         for y in amount..HEIGHT {
@@ -168,6 +164,14 @@ impl ProgressBar {
         let w = pct * self.size;
         vga::draw_filled_rect(x, y, 8, w as usize, self.color);
     }
+
+    pub fn draw_below_line(&self, space: usize) {
+        let pct = (self.current - self.min) / (self.max - self.min);
+        let w = pct * self.size;
+        vga::draw_filled_rect(space, terminal::y() + terminal::font_height() + space, 8, w as usize, self.color);
+    }
+
+    
 
     pub fn update(&mut self, value: f32) {
         self.current = value.clamp(self.min, self.max);

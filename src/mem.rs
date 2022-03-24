@@ -287,8 +287,6 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     width = width.max(free.log10());
     width = width.max(used.log10());
     width = width.max(total.log10());
-    width = width.max((BitmapAllocator::free_count() as u32).log10());
-    width = width.max((BitmapAllocator::used_count() as u32).log10());
     println!("Used:  {:0w$} Bytes", used, w = width as usize);
     println!("Free:  {:0w$} Bytes", free, w = width as usize);
     println!("Total: {:0w$} Bytes", total, w = width as usize);
@@ -296,17 +294,6 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     sprint!("Used:  {:0w$} Bytes\n", used, w = width as usize);
     sprint!("Free:  {:0w$} Bytes\n", free, w = width as usize);
     sprint!("Total: {:0w$} Bytes\n", total, w = width as usize);
-
-    println!(
-        "Pages Free: {:0w$}",
-        BitmapAllocator::free_count(),
-        w = width as usize
-    );
-    println!(
-        "Pages Used: {:0w$}",
-        BitmapAllocator::used_count(),
-        w = width as usize
-    );
     println!("=================");
     ExitCode::Ok
 }

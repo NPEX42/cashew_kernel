@@ -104,7 +104,11 @@ pub fn boot(info: &'static mut BootInfo) {
             println!("No Cache Detected...");
         }
 
-        post::self_test();
+
+        csh::init().expect("Failed To Initialize The Shell...");
+        csh::exec("mount hdb");
+
+        //post::self_test();
     }
 }
 

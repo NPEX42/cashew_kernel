@@ -1,9 +1,9 @@
 use core::{fmt::Display, mem::size_of};
 
-use alloc::vec::Vec;
+use alloc::{vec::Vec, string::String};
 
 use crate::{
-    ata,
+    ata::{self, BLOCK_SIZE},
     device::{self, *},
     klog,
 };
@@ -94,6 +94,38 @@ impl Block {
     pub fn write_u8_slice(&mut self, index: usize, data: &[u8]) {
         assert!(index + data.len() < self.data.len());
         self.data[index..index + data.len()].copy_from_slice(data);
+    }
+
+    pub fn read_utf8z(&self, offset: usize) -> String {
+        let mut buffer = Vec::new();
+        for i in offset..self.data().len() {
+            if self.data[i] > 0 {
+                buffer.push(self.data[i]);
+            } else {break;}
+        }
+
+        String::from_utf8(buffer).expect("Failed To Read UTF-8Z")
+    }
+
+    pub fn read_utf8(&self, offset: usize, size: usize) -> String {
+        let mut buffer = Vec::new();
+        let end = self.data.len().min(offset + size);
+        for i in offset..end {
+            if self.data[i] > 0 {
+                buffer.push(self.data[i]);
+            } else {break;}
+        }
+
+        String::from_utf8(buffer).expect("Failed To Read UTF-8")
+    }
+
+    pub fn write_utf8(&mut self, offset: usize, text: &str) {
+        self.write_u8_slice(offset, text.as_bytes());
+    }
+
+    pub fn write_block_addr_be(&mut self, index: usize, addr: BlockAddr) {
+        let size = size_of::<BlockAddr>();
+        self.data[index..index+size].copy_from_slice(&addr.to_be_bytes())
     }
 }
 

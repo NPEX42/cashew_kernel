@@ -17,6 +17,14 @@ static mut TERMINAL_FB: Frame = Frame::new();
 
 const LINE_SPACING: usize = 2;
 
+pub fn font_height() -> usize {
+    FONT_HEIGHT
+}
+
+pub fn font_width() -> usize {
+    FONT_WIDTH
+}
+
 pub fn initialize() {
     TERMINAL.init_once(|| {
         Locked::new(TerminalWriter::new(
@@ -54,6 +62,8 @@ pub fn buf_height() -> usize {
 pub fn buf_width() -> usize {
     screen_width() / FONT_WIDTH
 }
+
+
 
 pub fn move_y(amount: isize) {
     let mut y = y() as isize;

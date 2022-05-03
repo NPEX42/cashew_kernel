@@ -6,7 +6,7 @@ Than Writes.
 
 ## The Solutions
 ---
-- Keep a Copy of Block data in memory, when a Read Comes in for that block, return a copy of the in-memory block, skipping an Expensive Disk Operation. When a Write comes in for that block, we replace the data in the cache & then write the block to disk. Using this System, Blocks have to be read Once, Expensive Disk I/O Only Happens When Absolutely Necessary.
+- Keep a Copy of Block data in memory, when a Read Comes in for that block, return a copy of the in-memory block, skipping an Expensive Disk Operation. When a Write comes in for that block, we replace the data in the cache & then write the block to disk. Using this System, Blocks have to be read Once & Expensive Disk I/O Only Happens When Absolutely Necessary.
 
 
 ## Benchmarks

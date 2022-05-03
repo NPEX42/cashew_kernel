@@ -14,6 +14,7 @@ pub struct Config {
 struct Machine {
     pub memory: Option<String>,
     pub tty: Option<String>,
+    pub wait_for_gdb: bool
 }
 
 impl Config {
@@ -60,6 +61,7 @@ impl Config {
             self.get_disk("boot").unwrap()
         ));
 
+
         if let Some(machine) = &self.machine {
             args.push("-m".into());
             if let Some(mem) = &machine.memory {
@@ -73,6 +75,11 @@ impl Config {
                 args.push(tty.clone());
             } else {
                 args.push("stdio".into());
+            }
+
+            if machine.wait_for_gdb {
+                args.push("-s".into());
+                args.push("-S".into());
             }
 
             for (name, disk) in self.get_disks().unwrap().iter() {

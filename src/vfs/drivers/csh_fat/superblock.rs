@@ -2,10 +2,12 @@ use bit_field::BitField;
 
 use crate::{
     csh::{ExitCode, ShellArgs},
-    device::{self},
+    device::{self, BlockAddr},
     input, print, println,
     vfs::block::Block, terminal, graphics_2d::{Pixel, ProgressBar}, vga::screen_width,
 };
+
+use super::inode::Inode;
 const SUPERBLOCK_ADDR: u32 = 0;
 const SIGNATURE: &[u8; 3] = b"CFS";
 
@@ -210,7 +212,7 @@ pub fn preload() {
         );
         fat_pb.update(fat_addr as f32);
         fat_pb.draw(2,  terminal::y() + 8);
-        Block::read(fat_addr).unwrap();
+        //Block::read(fat_addr).unwrap();
     }
 
     
@@ -224,7 +226,7 @@ pub fn preload() {
 pub fn csh_format(_args: ShellArgs) -> ExitCode {
     let blocks = device::info().unwrap().blocks;
     let part_size: u32 = (input::prompt("Input Partition Size (MB): ").parse::<u32>().unwrap() * (1 << 20)) / 512;
-    let part_size = part_size.min(blocks as u32);
+    let part_size = part_size.min((blocks - 1) as u32);
     let data_size: u32 = (input::prompt("Input Data Size (MB): ").parse::<u32>().unwrap() * (1 << 20)) / 512;
     let erase_drive: bool =
         input::prompt("Erase Drive Beforehand? [y/N]: ").eq_ignore_ascii_case("y");
@@ -252,11 +254,21 @@ pub fn csh_format(_args: ShellArgs) -> ExitCode {
         Block::empty(addr).write();
     }
 
+    create_root();
+
     println!();
 
     ExitCode::Ok
 }
 
-pub(crate) fn data_index_to_lba(index: u32) -> u32 {
-    partition_size().unwrap() - index
+fn create_root() {
+    Inode::create_root().sync();
+}
+
+pub fn data_index_to_lba(data_index: u32) -> u32 {
+    partition_size().unwrap() - data_index
+}
+
+pub fn lba_to_data(lba: BlockAddr) -> u32 {
+    partition_size().unwrap() - lba
 }

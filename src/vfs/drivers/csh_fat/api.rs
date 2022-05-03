@@ -1,8 +1,23 @@
 use core::ops::{Index, IndexMut};
 
+use alloc::vec::Vec;
+
 use crate::{api::fs::Block, device::BlockAddr};
 
-use super::{superblock::{self, data_index_to_lba}, bitmap::Bitmap, inode::{Inode}};
+use super::{superblock::{self, data_index_to_lba, lba_to_data}, bitmap::Bitmap, inode::{Inode}, index_block::IndexBlock};
+
+static mut ACTIVE_INODE: Option<Inode> = None;
+
+
+pub(super) const ROOT_DIR_INDEX: u32 = 1;
+
+pub fn set_active_dir(dir: Option<Inode>) {
+    unsafe {ACTIVE_INODE = dir}
+}
+
+pub fn active_dir<'a>() -> Option<&'a mut Inode> {
+    unsafe {ACTIVE_INODE.as_mut()}
+}
 
 pub fn allocate_datablock() -> Option<DataBlock> {
     for block_index in 0..superblock::data_size().unwrap() {
@@ -28,8 +43,20 @@ pub fn data_block(index: BlockAddr) -> Option<DataBlock> {
     }
 }
 
+pub fn root() -> Option<Inode> {
+    Inode::read(ROOT_DIR_INDEX)
+}
+
 pub fn create_file(name: &str, size: usize) -> Option<Inode> {
     Inode::new_file(name, size)
+}
+
+pub fn allocate_indexblock() -> Option<IndexBlock> {
+    IndexBlock::allocate()
+}
+
+pub fn free_indexblock(index: BlockAddr) {
+    IndexBlock::read(index).unwrap().clear();
 }
 
 
@@ -44,6 +71,10 @@ impl DataBlock {
 
     pub fn allocate() -> Option<Self> {
         allocate_datablock()
+    }
+
+    pub fn data_index(&self) -> BlockAddr {
+        lba_to_data(self._block.addr())
     }
 
     pub fn block(&self) -> &Block {
@@ -93,4 +124,21 @@ impl IndexMut<usize> for DataBlock {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.data_mut()[index]
     }
+}
+
+
+impl Into<Vec<u8>> for IndexBlock {
+    fn into(self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        for block in self.datablocks() {
+            for byte in block.data() {
+                buffer.push(*byte);
+            }
+        }
+        buffer
+    }
+}
+
+pub fn file(path: &str) -> &str {
+    path.split('/').collect::<Vec<&str>>().last().unwrap()
 }

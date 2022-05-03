@@ -11,7 +11,7 @@
 	- [ ] Pipes
 	- [ ] Directories
 	- [ ] Files
-	- [ ] Device Formatting
+	- [x] Device Formatting
 	- [ ] CashewFS 
 - [ ] ACPI I/O 
 	- [ ] ACPI Restart
@@ -35,8 +35,8 @@
 	- [ ]  Char device Abstractions
 		- [x] Terminal
 		- [x] Serial  
-		- [ ] FIFO Pipe
-		- [ ] Null device
+		- [x] FIFO Pipe
+		- [x] Null device
 		- [ ] PRNG
 	- [ ] Block Devices
 		- [ ] ATA

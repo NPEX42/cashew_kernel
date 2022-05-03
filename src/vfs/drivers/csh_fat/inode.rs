@@ -1,8 +1,8 @@
 use alloc::{string::String, vec::Vec};
 
-use crate::api::fs::Block;
+use crate::{api::fs::Block, device::BlockAddr, klog, trace};
 
-use super::{index_block::IndexBlock, data_block, DataBlock};
+use super::{index_block::IndexBlock, data_block, DataBlock, superblock::{self, data_index_to_lba}, ROOT_DIR_INDEX, file::File};
 
 
 
@@ -30,7 +30,7 @@ impl EntryKind {
         }
     }
 }
-
+#[derive(Debug, Clone)]
 pub struct Inode {
     _block: Block,
     kind: EntryKind,
@@ -51,6 +51,28 @@ impl Inode {
         }
     }
 
+    fn dir_with_addr(block: BlockAddr, name: &str) -> Self {
+        Self {
+            _block: Block::read(data_index_to_lba(block)).unwrap(),
+            kind: EntryKind::Directory,
+            block_index: IndexBlock::allocate().unwrap(),
+            size: 0,
+
+            name: name.into()
+        }
+    }
+
+    pub(crate) fn create_root() -> Inode {
+        Self::dir_with_addr(ROOT_DIR_INDEX, "/")
+    }
+
+    pub fn new_dir(name: &str) -> Option<Inode> {
+            match IndexBlock::allocate() {
+                Some(block) => Some(Self::new(name, EntryKind::Directory, 0, block)),
+                None => None
+            }
+    }
+
     pub fn new_file(name: &str, size: usize) -> Option<Inode> {
         match IndexBlock::allocate() {
             Some(block) => Some(Self::new(name, EntryKind::File, size, block)),
@@ -65,7 +87,7 @@ impl Inode {
             let index_block = block.block().read_u32_be(5);
             let name_len = block[10];
             let name = block.block().read_utf8(11, name_len as usize);
-
+            klog!("Index Block DB-{}, LBA-{}\n", index_block, data_index_to_lba(index_block));
             Some(Self {
                 _block: *block.block(),
                 block_index: IndexBlock::read(index_block).expect("Failed To Read Index Block"),
@@ -78,14 +100,32 @@ impl Inode {
         }
     }
 
+    pub fn add_child(&mut self, child: Inode) {
+        self.block_index.add_inode(&child);
+    }
+
+    pub fn add_file(&mut self, child: &File) {
+        self.block_index.add_inode(&child.inode);
+        self.sync();
+    }
+
+    pub fn index(&self) -> BlockAddr {
+        superblock::partition_size().unwrap() - self._block.addr()
+    }
+
     pub fn datablocks(&self) -> Vec<DataBlock> {
         self.block_index.datablocks()
     }
 
+    pub fn children(&self) -> Vec<Inode> {
+        self.block_index.get_inodes()
+    }
+
     pub fn sync(&mut self) {
+        trace!();
         self._block.data_mut()[0] = self.kind as u8;
         self._block.write_u32_be(1, self.size);
-        self._block.write_u32_be(5, self.block_index.addr());
+        self._block.write_u32_be(5, self.block_index.data_index());
         self._block.data_mut()[10] = self.name.as_bytes().len() as u8;
         self._block.write_utf8(11, &self.name);
         self._block.write();
@@ -102,5 +142,29 @@ impl Inode {
     pub fn set_data(&mut self, data: &[u8]) {
         self.resize(data.len());
         self.block_index.set_data(data);
+    }
+
+    pub fn data(&self) -> Vec<u8> {
+        self.block_index.data(self.size as usize)
+    }
+
+    pub fn child(&self, name: &str) -> Option<Inode> {
+        let children = self.block_index.get_inodes();
+        for child in children {
+            if child.name == name {
+                return Some(child)
+            }
+        }
+
+
+        None
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn size(&self) -> u32 {
+        self.size
     }
 }

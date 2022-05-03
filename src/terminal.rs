@@ -124,6 +124,8 @@ pub fn print_custom(bitmap: &[u8]) {
     });
 }
 
+#[deprecated(since = "0.4.1", note = "Uneeded")]
+#[allow(deprecated)]
 pub fn set_print_newline(state: bool) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         TERMINAL.get().unwrap().lock().set_print_newline(state);
@@ -250,6 +252,7 @@ impl TerminalWriter {
         self.fg_color = color;
     }
 
+    #[deprecated(since = "4.0.0", note = "Unessacery")]
     pub fn set_print_newline(&mut self, state: bool) {
         self.print_control = state;
     }

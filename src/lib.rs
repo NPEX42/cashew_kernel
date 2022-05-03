@@ -108,6 +108,9 @@ pub fn boot(info: &'static mut BootInfo) {
         csh::init().expect("Failed To Initialize The Shell...");
         csh::exec("mount hdb");
 
+
+        
+
         //post::self_test();
     }
 }

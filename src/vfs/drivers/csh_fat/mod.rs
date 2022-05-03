@@ -2,6 +2,7 @@ mod bitmap;
 mod api;
 mod inode;
 mod index_block;
+pub mod file;
 
 pub use api::*;
 

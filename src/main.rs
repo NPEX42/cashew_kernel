@@ -7,12 +7,16 @@
 extern crate alloc;
 use core::arch::asm;
 
+
+
+
 use alloc::vec::Vec;
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{ata, graphics_2d::*, kerr, println};
-use cashew_kernel::{csh, vfs::drivers::csh_fat::*};
+use cashew_kernel::device::Pipe;
+use cashew_kernel::vfs::drivers::simple_fat::fat::FileAttributeTable;
+use cashew_kernel::{ata, graphics_2d::*, kerr, println, csh};
 
 #[cfg(not(test))]
 entry_point!(kernel_main);
@@ -26,23 +30,23 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
         println!("Booting Complete, Press Any Key To continue");
 
-        if superblock::validate() {
 
-            superblock::preload();
-            println!(
-                "CSH FAT V{}.{} ({} Data Blocks - {} Allocated)",
-                superblock::version_major(),
-                superblock::version_minor(),
-                superblock::data_size().unwrap(),
-                superblock::alloc_count()
-            );
+        let mut pipe = Pipe::new();
+        pipe.write(0x80);
+        println!("Pipe: {:02x?}", pipe.read());
+        ata::cache_stats();
 
-            
-        } else {
-            println!("Unrecognised FileSystem, Run 'format' to Format The Drive");
+        let mut fat = FileAttributeTable::load(0, 4);
+
+        for i in 0..fat.entry_count() {
+            let entry = &fat[i];
+            if !entry.is_empty() {
+                println!("FAT[{}] = {}", i, entry);
+            }
         }
 
-        ata::cache_stats();
+
+        
 
         csh::main(Vec::new());
         cashew_kernel::shutdown();
@@ -62,6 +66,7 @@ pub extern "C" fn _start() -> ! {
     loop {}
 }
 
+#[no_mangle]
 pub unsafe extern "C" fn userspace_prog_1() {
     asm!("nop");
 }

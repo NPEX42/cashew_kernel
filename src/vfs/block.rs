@@ -3,7 +3,7 @@ use core::{fmt::Display, mem::size_of};
 use alloc::{vec::Vec, string::String};
 
 use crate::{
-    ata::{self, BLOCK_SIZE},
+    ata::{self},
     device::{self, *},
     klog,
 };
@@ -57,17 +57,18 @@ impl Block {
     }
 
     pub fn read_u16_be(&self, index: usize) -> u16 {
-        assert!(index + 2 < self.data.len());
+        assert!(index + 1 < self.data.len());
         u16::from_be_bytes(self.data[index..index + 2].try_into().unwrap())
     }
 
     pub fn read_u32_be(&self, index: usize) -> u32 {
-        assert!(index + 4 < self.data.len());
+        klog!("Index: {}\n", index);
+        assert!(index + 3 < self.data.len(), "Index: {}", index);
         u32::from_be_bytes(self.data[index..index + 4].try_into().unwrap())
     }
 
     pub fn read_u64_be(&self, index: usize) -> u64 {
-        assert!(index + 8 < self.data.len());
+        assert!(index + 7 < self.data.len());
         u64::from_be_bytes(self.data[index..index + 8].try_into().unwrap())
     }
 

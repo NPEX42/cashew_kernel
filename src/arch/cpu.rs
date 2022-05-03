@@ -1,17 +1,6 @@
 use alloc::string::String;
 use raw_cpuid::CpuId;
-use x86_64::VirtAddr;
 
-/// Execute A Byte Slice As x86-64 Machine Code.
-/// Safety:
-///     - binary MUST be legal & valid x86/x64 Machine Code.
-///     - The System MUST be left in a valid & consistent State
-///     - The Calling Convention MUST be the C Standard Call.
-pub unsafe fn execute_c(addr: VirtAddr) {
-    let fn_ptr = (addr.as_ptr() as *const ()) as *const extern "C" fn();
-
-    (*fn_ptr)()
-}
 
 #[repr(C)]
 pub struct Registers {
@@ -53,4 +42,9 @@ pub fn supports_avx() -> bool {
 
 pub fn cache_params() -> Option<raw_cpuid::CacheParametersIter> {
     cpuid().get_cache_parameters()
+}
+
+pub fn l1_cache_info() -> Option<raw_cpuid::CacheParameter> {
+    cache_params()
+    .and_then(|mut params| {params.nth(0)})
 }

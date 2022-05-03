@@ -8,7 +8,7 @@ use crate::{
     klog,
 };
 
-use super::{drivers::csh_fat::BlockBitmap, BlockAllocator};
+use super::{BlockAllocator};
 
 const DATA_OFFSET: usize = 4;
 const DATA_SIZE: usize = 512 - DATA_OFFSET;
@@ -31,13 +31,15 @@ impl Block {
             data: [0; ata::BLOCK_SIZE],
         }
     }
-
+    
+    #[deprecated]
     pub fn allocate() -> Option<Block> {
-        BlockBitmap::get().allocate()
+        unimplemented!()
     }
 
+    #[deprecated]
     pub fn free(&mut self) {
-        BlockBitmap::get().free(self.addr)
+        unimplemented!()
     }
 
     pub fn data(&self) -> &[u8] {

@@ -2,6 +2,8 @@ pub use x86_64 as x64;
 
 use x64::instructions::port::Port;
 
+use crate::kprog;
+
 pub mod acpi;
 pub mod cmos;
 pub mod cpu;
@@ -64,12 +66,12 @@ pub fn inl(port: u16) -> u32 {
 }
 
 pub fn disable_interrupts() {
-    crate::sprint!("[Arch]: Disabling Interrupts\n");
+    kprog!("Disabling Interrupts");
     x64::instructions::interrupts::disable();
 }
 
 pub fn enable_interrupts() {
-    crate::sprint!("[Arch]: Enabling Interrupts\n");
+    kprog!("Enabling Interrupts");
     x64::instructions::interrupts::enable();
 }
 

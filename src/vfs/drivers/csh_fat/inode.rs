@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use crate::{api::fs::Block, device::BlockAddr, klog, trace};
+use crate::{api::fs::Block, device::BlockAddr, klog, trace_enter, trace_exit};
 
 use super::{index_block::IndexBlock, data_block, DataBlock, superblock::{self, data_index_to_lba}, ROOT_DIR_INDEX, file::File};
 
@@ -40,16 +40,7 @@ pub struct Inode {
 }
 
 impl Inode {
-    fn new(name: &str, kind: EntryKind, size: usize, start: IndexBlock) -> Self {
-        Self {
-            _block: Block::allocate().expect("Failed To Allocate Inode"),
-            kind,
-            block_index: start,
-            size: size as u32,
 
-            name: name.into()
-        }
-    }
 
     fn dir_with_addr(block: BlockAddr, name: &str) -> Self {
         Self {
@@ -66,18 +57,12 @@ impl Inode {
         Self::dir_with_addr(ROOT_DIR_INDEX, "/")
     }
 
-    pub fn new_dir(name: &str) -> Option<Inode> {
-            match IndexBlock::allocate() {
-                Some(block) => Some(Self::new(name, EntryKind::Directory, 0, block)),
-                None => None
-            }
+    pub fn new_dir(_name: &str) -> Option<Inode> {
+            unimplemented!()
     }
 
-    pub fn new_file(name: &str, size: usize) -> Option<Inode> {
-        match IndexBlock::allocate() {
-            Some(block) => Some(Self::new(name, EntryKind::File, size, block)),
-            None => None
-        }
+    pub fn new_file(_name: &str, _size: usize) -> Option<Inode> {
+        unimplemented!()
     }
 
     pub fn read(index: u32) -> Option<Inode> {
@@ -122,14 +107,14 @@ impl Inode {
     }
 
     pub fn sync(&mut self) {
-        trace!();
+        trace_enter!();
         self._block.data_mut()[0] = self.kind as u8;
         self._block.write_u32_be(1, self.size);
         self._block.write_u32_be(5, self.block_index.data_index());
         self._block.data_mut()[10] = self.name.as_bytes().len() as u8;
         self._block.write_utf8(11, &self.name);
         self._block.write();
-
+        trace_exit!();
 
         self.block_index.sync();
     }

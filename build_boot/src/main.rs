@@ -111,33 +111,6 @@ fn build_image(kernel_bin: &Path) -> PathBuf {
     disk_image
 }
 
-pub fn run_from_cfg_bak(cfg: &str) -> Option<io::Result<Child>> {
-    if let Ok(config) = &Config::from(cfg) {
-        let mut command = Command::new(config.runner.clone());
-        let bin = config.get_disk("boot").expect("Missing Boot Drive");
-        command.arg("-drive");
-        command.arg(format!("format=raw,file={}", bin));
-
-        if let Some(run_args) = config.run_args() {
-            command.args(run_args);
-        }
-
-        if let Some(disks) = config.get_disks() {
-            for (drive_id, file) in disks {
-                if drive_id == "boot" {
-                    continue;
-                }
-                command.arg(format!("-{}", drive_id));
-                command.arg(file);
-            }
-        }
-
-        command
-            .status()
-            .expect(&format!("Failed To Run {} on {}", bin, config.runner));
-    }
-    None
-}
 
 pub fn run_from_cfg(cfg: &str) -> Option<io::Result<Child>> {
     if let Ok(config) = &Config::from(cfg) {

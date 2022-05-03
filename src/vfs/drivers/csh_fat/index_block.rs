@@ -1,5 +1,5 @@
 use core::mem::size_of;
-use crate::{klog, kerr, trace};
+use crate::{klog, kerr, trace_enter, trace_exit};
 
 use alloc::vec::Vec;
 
@@ -103,7 +103,7 @@ impl IndexBlock {
     }
 
     pub fn sync(&mut self) {
-        trace!();
+        trace_enter!();
         klog!("Vec Blocks: {}, Count: {}\n", self.blocks.len(), self.count());
         //assert!(self.blocks.len() == self.count as usize);
         self._block.block_mut().write_u16_be(0, self.count);
@@ -118,6 +118,7 @@ impl IndexBlock {
             idx += 1; 
         }
         self._block.block_mut().write();
+        trace_exit!();
     }
 
     pub fn resize(&mut self, new_size: u16) {

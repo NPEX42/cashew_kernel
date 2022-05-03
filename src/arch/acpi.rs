@@ -5,7 +5,9 @@ use alloc::boxed::Box;
 use aml::{AmlContext, Handler};
 use x86_64::{instructions::port::Port, PhysAddr};
 
-use crate::{klog, mem};
+use crate::{klog, mem, kerr};
+
+use super::io;
 
 #[allow(dead_code)]
 #[repr(u64)]
@@ -22,18 +24,21 @@ enum FADT {
     Pm1bControlBlock = 68, // u32,
 }
 
-fn read_addr<T>(physical_address: usize) -> T
-where
-    T: Copy,
-{
-    let virtual_address = crate::mem::phys_to_virt(PhysAddr::new(physical_address as u64)).unwrap();
+fn read_addr<T: Copy>(physical_address: usize) -> T {
+    let virtual_address = crate::mem::phys_to_virt(
+        PhysAddr::new(physical_address as u64)
+    ).unwrap();
     unsafe { *virtual_address.as_ptr::<T>() }
 }
 
-fn read_fadt<T>(address: usize, offset: FADT) -> T
-where
-    T: Copy,
-{
+fn write_addr<T: Copy>(physical_address: usize, item: T) {
+    let virtual_address = crate::mem::phys_to_virt(
+        PhysAddr::new(physical_address as u64)
+    ).unwrap();
+    unsafe { *virtual_address.as_mut_ptr::<T>() = item; }
+}
+
+fn read_fadt<T: Copy>(address: usize, offset: FADT) -> T {
     read_addr::<T>(address + offset as usize)
 }
 
@@ -49,7 +54,6 @@ pub fn shutdown() {
         Ok(acpi) => {
             for (sig, sdt) in acpi.sdts {
                 if sig.as_str() == "FACP" {
-                    klog!("FACP Found\n");
                     pm1a_control_block =
                         read_fadt::<u32>(sdt.physical_address, FADT::Pm1aControlBlock);
                 }
@@ -77,7 +81,7 @@ pub fn shutdown() {
         }
 
         Err(_e) => {
-            klog!("Failed To Read RSDP Table\n");
+            kerr!("Failed To Read RSDP Table\n");
         }
     }
 
@@ -125,35 +129,35 @@ impl Handler for CashewAmlHandler {
     fn read_u64(&self, address: usize) -> u64 {
         read_addr::<u64>(address)
     }
-    fn write_u8(&mut self, _address: usize, _value: u8) {
-        unimplemented!()
+    fn write_u8(&mut self, address: usize, value: u8) {
+        write_addr(address, value)
     }
-    fn write_u16(&mut self, _address: usize, _value: u16) {
-        unimplemented!()
+    fn write_u16(&mut self, address: usize, value: u16) {
+        write_addr(address, value)
     }
-    fn write_u32(&mut self, _address: usize, _value: u32) {
-        unimplemented!()
+    fn write_u32(&mut self, address: usize, value: u32) {
+        write_addr(address, value)
     }
-    fn write_u64(&mut self, _address: usize, _value: u64) {
-        unimplemented!()
+    fn write_u64(&mut self, address: usize, value: u64) {
+        write_addr(address, value)
     }
-    fn read_io_u8(&self, _port: u16) -> u8 {
-        unimplemented!()
+    fn read_io_u8(&self, port: u16) -> u8 {
+        io::pio::read(port)
     }
-    fn read_io_u16(&self, _port: u16) -> u16 {
-        unimplemented!()
+    fn read_io_u16(&self, port: u16) -> u16 {
+        io::pio::read(port)
     }
-    fn read_io_u32(&self, _port: u16) -> u32 {
-        unimplemented!()
+    fn read_io_u32(&self, port: u16) -> u32 {
+        io::pio::read(port)
     }
-    fn write_io_u8(&self, _port: u16, _value: u8) {
-        unimplemented!()
+    fn write_io_u8(&self, port: u16, value: u8) {
+        io::pio::write(port, value)
     }
-    fn write_io_u16(&self, _port: u16, _value: u16) {
-        unimplemented!()
+    fn write_io_u16(&self, port: u16, value: u16) {
+        io::pio::write(port, value)
     }
-    fn write_io_u32(&self, _port: u16, _value: u32) {
-        unimplemented!()
+    fn write_io_u32(&self, port: u16, value: u32) {
+        io::pio::write(port, value)
     }
     fn read_pci_u8(&self, _segment: u16, _bus: u8, _device: u8, _function: u8, _offset: u16) -> u8 {
         unimplemented!()

@@ -22,10 +22,6 @@ impl Config {
         toml::from_str(cfg)
     }
 
-    pub fn run_args(&self) -> Option<&Vec<String>> {
-        self.run_args.as_ref()
-    }
-
     /// Get The Debug Args If Present. If There Are No Debug Arguments, The Run Args Are Returned If Present.
     #[allow(unused)]
     pub fn debug_args(&self) -> Option<&Vec<String>> {

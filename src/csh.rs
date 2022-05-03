@@ -4,7 +4,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{api::fs::csh_fat::superblock, device, input, mem, println, sprint, time};
+use crate::{device, input, mem, println, sprint, time};
 
 pub mod cat;
 pub mod ls;
@@ -32,7 +32,6 @@ pub fn init() -> Result<(), ()> {
     add_program("help", help)?;
     add_program("time", time::time)?;
     add_program("shutdown", shutdown)?;
-    add_program("format", superblock::csh_format)?;
 
     Ok(())
 }

@@ -1,35 +1,49 @@
+
+/// Alias for `panic`.
+#[macro_export]
+macro_rules! fatal {
+    ($fmt:expr, $($args:tt)*) => {
+        panic!($fmt, $($args)*);
+    };
+
+    ($fmt:expr) => {
+        panic!($fmt);
+    };
+
+    () => {
+        panic!();
+    };
+}
+
+/// Log To Serial.
 #[macro_export]
 macro_rules! klog {
     ($fmt:expr, $($args:tt)*) => {
-        //$crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!(), $($args)*));
         $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!(), $($args)*));
-        //$crate::terminal::swap();
+    };
+
+    ($fmt:expr) => {
+        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!()))
+    };
+}
+
+/// Write A Short Progress Message To Serial.
+#[macro_export]
+macro_rules! kprog {
+    ($fmt:expr, $($args:tt)*) => {
+        $crate::serial::_print(format_args!(concat!("[{}] ", $fmt, "\n"), module_path!(),  $($args)*));
     };
 
     ($fmt:expr) => {
         //$crate::terminal::write_fmt(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt), file!(), line!(), column!()));
-        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!()))
+        $crate::serial::_print(format_args!(concat!("[{}] ", $fmt, "\n"), module_path!()));
         //$crate::terminal::swap();
     };
 }
 
-#[macro_export]
-macro_rules! kwarn {
-    ($fmt:expr, $($args:tt)*) => {
-        let old_color = $crate::terminal::get_fg();
-        $crate::terminal::set_fg(C64_PALLETE[10]);
-        $crate::terminal::write_fmt(format_args!(concat!("[WARN]: ", $fmt, "\n"), $($args)*));
-        $crate::terminal::set_fg(old_color);
-    };
-
-    ($fmt:expr) => {
-        let old_color = $crate::terminal::get_fg();
-        $crate::terminal::set_fg(C64_PALLETE[10]);
-        $crate::terminal::write_fmt(format_args!(concat!("[WARN]: , ", $fmt)));
-        $crate::terminal::set_fg(old_color);
-    };
-}
-
+/// Print A Error Message Over Serial.
+/// 
+/// ! USED BY PANIC !
 #[macro_export]
 macro_rules! kerr {
     ($fmt:expr, $($args:tt)*) => {
@@ -53,6 +67,9 @@ macro_rules! debug {
     };
 }
 
+
+
+
 #[cfg(not(feature = "debug"))]
 #[macro_export]
 macro_rules! debug {
@@ -68,8 +85,15 @@ macro_rules! debug {
 
 
 #[macro_export]
-macro_rules! trace {
+macro_rules! trace_enter {
     () => {
-        $crate::sprint!("[{}:{}:{}]\n", file!(), line!(), column!());
+        $crate::sprint!("ENTERING -> [{}:{}:{}]\n", file!(), line!(), column!());
+    }
+}
+
+#[macro_export]
+macro_rules! trace_exit {
+    () => {
+        $crate::sprint!("EXITING -> [{}:{}:{}]\n", file!(), line!(), column!());
     }
 }

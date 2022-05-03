@@ -3,12 +3,12 @@ use core::fmt::Display;
 use x64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
 use crate::{
-    arch::{self, *},
-    sprint,
+    arch::{self, *}, kprog,
 };
 
 const PS2_DATA: u16 = 0x60;
 const PS2_COMMAND: u16 = 0x64;
+const MAX_TRIES: usize = 1000;
 
 pub type PS2Result<T> = Result<T, &'static str>;
 
@@ -104,7 +104,7 @@ impl PS2Controller {
     }
 
     pub fn wait_on_status_set(&mut self, flag: StatusFlags) -> PS2Result<()> {
-        for _ in 0..3 {
+        for _ in 0..MAX_TRIES {
             if self.status().is_set(flag) {
                 return Ok(());
             };
@@ -114,7 +114,7 @@ impl PS2Controller {
     }
 
     pub fn wait_on_status_clear(&mut self, flag: StatusFlags) -> PS2Result<()> {
-        for _ in 0..3 {
+        for _ in 0..MAX_TRIES {
             if self.status().is_clear(flag) {
                 return Ok(());
             };
@@ -127,31 +127,31 @@ impl PS2Controller {
         arch::disable_interrupts();
 
         // Step 3 - Disable Devices
-        sprint!("[PS/2]: Disabling Devices\n");
+        kprog!("Disabling Devices");
         self.command(Command::DisablePort1)?;
         self.command(Command::DisablePort2)?;
 
         // Step 4 - Flush Output Buffer
-        sprint!("[PS/2]: Flushing Output Buffer\n");
+        kprog!("Flushing Output Buffer");
         #[allow(unused_must_use)]
         {
             self.read_data();
         }
 
         // Step 5 - Disable Port IRQs & Translation
-        sprint!("[PS/2]: Disabling IRQs & Translation\n");
+        kprog!("Disabling IRQs & Translation");
         self.command(Command::ReadConfig)?;
         let mut cfg = Config::from(self.read_data()?);
-        sprint!("[PS/2]: Config - {}\n", cfg);
+        kprog!("Config - {}", cfg);
         cfg.clear(ConfigFlags::Port1IrqEnabled);
         cfg.clear(ConfigFlags::Port2IrqEnabled);
         cfg.clear(ConfigFlags::Port1TranslateEn);
 
-        sprint!("[PS/2]: Config - {}\n", cfg);
+        kprog!("Config - {}", cfg);
         self.command(Command::WriteConfig)?;
         self.write_data(cfg.as_u8())?;
 
-        sprint!("[PS/2]: Self Testing\n");
+        kprog!("Self Testing");
         self.command(Command::SelfTest)?;
         assert!(self.read_data()? == 0x55);
 
@@ -161,7 +161,7 @@ impl PS2Controller {
         self.command(Command::TestPort2)?;
         assert!(self.read_data()? == 0x00);
 
-        sprint!("[PS/2]: Enabling Devices\n");
+        kprog!("Enabling Devices");
         self.command(Command::EnablePort1)?;
         self.command(Command::EnablePort2)?;
 
@@ -175,6 +175,7 @@ impl PS2Controller {
         self.write_data(cfg.as_u8())?;
         arch::enable_interrupts();
 
+        kprog!("Complete...");
         Ok(())
     }
 

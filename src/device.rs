@@ -1,13 +1,15 @@
-use core::{ops::Range, fmt::Write};
+use core::{ops::Range, fmt::{Write, Display}};
 
-use alloc::{string::String};
+use alloc::{string::String, vec::Vec};
 
 use crate::{
-    ata::{self},
+    ata::{self, Sector, BLOCK_SIZE},
     csh::{ErrorCode, ExitCode, ShellArgs},
     println, sprint,
     vfs::block::Block, serial, terminal, input,
 };
+
+const MEM_DISK_SIZE: usize = (4 << 20) / BLOCK_SIZE;
 
 pub type BlockAddr = u32;
 
@@ -15,15 +17,22 @@ static mut MOUNT: Option<Device> = None;
 
 pub fn mount_main(args: ShellArgs) -> ExitCode {
     if args.len() < 2 {
-        println!("Usage: {} [hda|hdb|hdc|hdd]", args[0]);
+        println!("Usage: {} [hda|hdb|hdc|hdd|mem]", args[0]);
         return ExitCode::Error(ErrorCode::Usage);
     }
 
     if let Some(dev) = Device::from_str(&args[1]) {
-        mount(dev)
+        if let Ok(info) = dev.clone().info() {
+            println!("Mounted {}", info);
+            mount(dev);
+        } else {
+            println!("Failed To Mount Device...");
+            return ExitCode::Error(ErrorCode::FatalError(1));
+        }
+        
     } else {
         println!("Invalid Device: '{}'", args[1]);
-        println!("Usage: {} [hda|hdb|hdc|hdd]", args[0]);
+        println!("Usage: {} [hda|hdb|hdc|hdd|mem]", args[0]);
         return ExitCode::Error(ErrorCode::Usage);
     }
 
@@ -96,8 +105,10 @@ pub trait BlockDeviceIO {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Device {
     Ata(u8, u8),
+    Mem(Vec<Sector>),
 }
 
 impl Device {
@@ -114,12 +125,19 @@ impl Device {
         Self::Ata(1, 1)
     }
 
+    pub fn mem() -> Self {
+        let mut disk = Vec::new();
+        for _ in 0..MEM_DISK_SIZE { disk.push([0; BLOCK_SIZE]) }
+        Self::Mem(disk)
+    }
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "hda" => Some(Self::hda()),
             "hdb" => Some(Self::hdb()),
             "hdd" => Some(Self::hdc()),
             "hdc" => Some(Self::hdd()),
+            "mem" => Some(Self::mem()),
             _ => None,
         }
     }
@@ -129,18 +147,34 @@ impl BlockDeviceIO for Device {
     fn block_count(&self) -> Result<usize, ()> {
         match self {
             Device::Ata(bus, drive) => ata::get_sector_count(*bus, *drive),
+            Device::Mem(blocks) => Ok(blocks.len()),
         }
     }
 
     fn read(&self, block: BlockAddr) -> Result<[u8; ata::BLOCK_SIZE], ()> {
         match self {
             Device::Ata(bus, drive) => ata::read_block(*bus, *drive, block),
+            Device::Mem(blocks) => {
+                if let Some(block) = blocks.get(block as usize) {
+                    return Ok(*block);
+                } else {
+                    return Err(());
+                }
+            }
         }
     }
 
     fn write(&mut self, block: BlockAddr, data: &[u8]) -> Result<(), ()> {
         match self {
             Device::Ata(bus, drive) => ata::write_block(*bus, *drive, block, data),
+            Device::Mem(blocks) => {
+                if blocks.len() > block as usize {
+                    blocks[block as usize] = data.try_into().expect("msg");
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 
@@ -154,6 +188,13 @@ impl BlockDeviceIO for Device {
                     name: info.model + ":" + &info.serial,
                 })
             }
+
+            Device::Mem(blocks) => {
+                Ok(DeviceInfo {
+                    blocks: blocks.len(),
+                    name: "MEMORY".into(),
+                })
+            },
         }
     }
 }
@@ -387,4 +428,11 @@ pub mod stdin {
         buffer.len()
     }
 
+}
+
+
+impl Display for DeviceInfo {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Device: {} - {} Blocks", self.name, self.blocks)
+    }
 }

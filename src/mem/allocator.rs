@@ -1,5 +1,6 @@
 pub const HEAP_START: usize = 0x_000A_0000_0000;
-pub const HEAP_SIZE: usize = 1024 * 1024 * 32; // 100 KiB
+/// 64 MB Heap
+pub const HEAP_SIZE: usize = 64 << 20;
 
 // in src/allocator.rs
 

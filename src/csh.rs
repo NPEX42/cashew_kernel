@@ -23,7 +23,6 @@ pub fn add_program(name: &str, main: ProgramMain) -> Result<(), ()> {
 }
 
 pub fn init() -> Result<(), ()> {
-    add_program("ls", ls::main)?;
     add_program("cat", cat::main)?;
     add_program("csh", main)?;
     add_program("mem", mem::csh_stats)?;

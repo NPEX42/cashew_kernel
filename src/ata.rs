@@ -6,6 +6,7 @@ use crate::println;
 use crate::sprint;
 
 use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use core::mem::size_of;
 
 use alloc::string::String;
@@ -82,6 +83,7 @@ pub fn availability() -> f64 {
     hits() as f64 / total_ops() as f64
 }
 
+pub type DiskResult<T> = Result<T, ()>;
 pub type EmptyResult = Result<(), ()>;
 pub type Sector = [u8; BLOCK_SIZE];
 
@@ -327,6 +329,29 @@ impl DiskInfo {
     }
 }
 
+static mut BUSES: Option<Vec<Bus>> = None;
+
+pub fn init() {
+    let mut buses = Vec::new();
+
+    buses.push(Bus::bus_0());
+    buses.push(Bus::bus_1());
+
+    unsafe {BUSES = Some(buses);}
+}
+
+pub fn bus<'a>(index: u8) -> Option<&'a Bus> {
+    if index > 1 { return None; }
+
+    unsafe {
+        if let Some(buses) = &BUSES {
+            buses.get(index as usize)
+        } else {
+            return None;
+        }
+    }
+}
+
 #[deprecated]
 /// MARKED FOR INTERNAL USE ONLY
 pub fn read(bus: u8, drive: u8, block: u32) -> Result<Sector, ()> {
@@ -360,4 +385,57 @@ fn get_register(bus: u8) -> Registers {
     let bus_ctl = if bus == 0 { 0x3F6 } else { 0x376 };
     let bus_irq = if bus == 0 { 14 } else { 15 };
     Registers::new(bus_io, bus_ctl, bus_irq)
+}
+
+
+pub struct Bus {
+    registers: Registers,
+    active_drive: DriveIndex,
+}
+
+
+/// (I/O Base, Control Base, IRQ line)
+pub type BusValues = (u16, u16, u8);
+
+pub const BUS_0: BusValues = (0x1F0, 0x3F6, 14);
+pub const BUS_1: BusValues = (0x170, 0x376, 15);
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+pub enum DriveIndex {
+    Primary = 0,
+    Secondary = 1,
+}
+
+impl Bus {
+
+    pub fn bus_0() -> Self {
+        Self::new(BUS_0)
+    }
+    pub fn bus_1() -> Self {
+        Self::new(BUS_1)
+    }
+
+    pub fn new(values: BusValues) -> Self {
+        Self {
+            registers: Registers::new(values.0, values.1, values.2),
+            active_drive: DriveIndex::Primary
+        }
+    }
+
+    pub fn set_active_drive(&mut self, drive: DriveIndex) {
+        self.active_drive = drive;
+    }
+
+    pub fn active_drive(&self) -> DriveIndex {
+        self.active_drive
+    }
+
+    pub fn write(&mut self, addr: BlockAddr, data: &[u8]) -> DiskResult<()> {
+        self.registers.write_block(self.active_drive as u8,addr, data)
+    }
+
+    pub fn read(&mut self, addr: BlockAddr) -> DiskResult<Sector> {
+        self.registers.read_block(self.active_drive as u8, addr)
+    }
 }

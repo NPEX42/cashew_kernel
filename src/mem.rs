@@ -1,5 +1,6 @@
 use core::{alloc::Layout, ptr::NonNull, sync::atomic::AtomicU64};
 
+use alloc::string::ToString;
 use bootloader::{
     boot_info::{MemoryRegion, MemoryRegions},
     BootInfo,
@@ -284,16 +285,18 @@ pub fn csh_stats(_: ShellArgs) -> ExitCode {
     let total = HEAP_SIZE;
 
     let mut width = 0;
-    width = width.max(free.log10());
-    width = width.max(used.log10());
-    width = width.max(total.log10());
-    println!("Used:  {:0w$} Bytes", used, w = width as usize);
-    println!("Free:  {:0w$} Bytes", free, w = width as usize);
-    println!("Total: {:0w$} Bytes", total, w = width as usize);
 
-    sprint!("Used:  {:0w$} Bytes\n", used, w = width as usize);
-    sprint!("Free:  {:0w$} Bytes\n", free, w = width as usize);
-    sprint!("Total: {:0w$} Bytes\n", total, w = width as usize);
+    width = width.max(free.to_string().chars().count());
+    width = width.max(used.to_string().chars().count());
+    width = width.max(total.to_string().chars().count());
+
+    println!("Used:  {:0>w$} Bytes", used, w = width as usize);
+    println!("Free:  {:0>w$} Bytes", free, w = width as usize);
+    println!("Total: {:0>w$} Bytes", total, w = width as usize);
+
+    sprint!("Used:  {:0>w$} Bytes\n", used, w = width as usize);
+    sprint!("Free:  {:0>w$} Bytes\n", free, w = width as usize);
+    sprint!("Total: {:0>w$} Bytes\n", total, w = width as usize);
     println!("=================");
     ExitCode::Ok
 }

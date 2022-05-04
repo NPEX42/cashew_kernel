@@ -8,7 +8,7 @@ use crate::{
 
 const PS2_DATA: u16 = 0x60;
 const PS2_COMMAND: u16 = 0x64;
-const MAX_TRIES: usize = 1000;
+const MAX_TRIES: usize = 100;
 
 pub type PS2Result<T> = Result<T, &'static str>;
 

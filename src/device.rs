@@ -6,7 +6,7 @@ use crate::{
     ata::{self, Sector, BLOCK_SIZE},
     csh::{ErrorCode, ExitCode, ShellArgs},
     println, sprint,
-    vfs::block::Block, serial, terminal, input,
+    vfs::block::Block, serial, terminal, input, locked::{Locked, SharedChannel},
 };
 
 const MEM_DISK_SIZE: usize = (4 << 20) / BLOCK_SIZE;
@@ -37,6 +37,16 @@ pub fn mount_main(args: ShellArgs) -> ExitCode {
     }
 
     ExitCode::Ok
+}
+
+/// Returns The Size In Blocks of the currently mounted BlockDevice.
+/// Returns Zero if no device is mounted.
+pub fn blk_dev_size() -> usize {
+    if is_mounted() {
+        return info().expect("Failed To Read Info").blocks;
+    } else {
+        0
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -261,8 +271,6 @@ pub trait CharDeviceIO : Write {
     fn write(&mut self, value: u8);
 }
 
-use alloc::collections::VecDeque;
-
 static mut STD_OUT: Option<CharDevice> = None;
 static mut STD_IN: Option<CharDevice> = None;
 static mut STD_ERR: Option<CharDevice> = None;
@@ -306,20 +314,20 @@ pub fn stdin<'a>() -> Option<&'a mut CharDevice> {
 }
 
 pub struct Pipe {
-    buffer: VecDeque<u8>
+    buffer: SharedChannel<u8>
 }
 
 impl Pipe {
     pub fn new() -> Pipe {
-        Pipe { buffer: VecDeque::new() }
+        Pipe { buffer: SharedChannel::new() }
     }
 
     pub fn write(&mut self, data: u8) {
-        self.buffer.push_front(data)
+        self.buffer.write(data)
     }
 
-    pub fn read(&mut self) -> Option<u8> {
-        self.buffer.pop_back()
+    pub fn read(&self) -> Option<u8> {
+        self.buffer.read()
     }
 }
 
@@ -327,9 +335,10 @@ impl Pipe {
 pub enum CharDevice {
     Terminal,
     Serial,
-    Pipe(Pipe),
+    Pipe(Locked<Pipe>),
     Null
 }
+
 
 impl Write for CharDevice {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
@@ -354,14 +363,14 @@ impl CharDeviceIO for CharDevice {
                 res
             },
             
-            Self::Pipe(pipe) => {pipe.read()},
+            Self::Pipe(pipe) => {pipe.lock().read()},
             Self::Null => None
         }
     }
 
     fn write(&mut self, value: u8) {
         match self {
-        Self::Pipe(pipe) => {pipe.write(value)},
+        Self::Pipe(pipe) => {pipe.lock().write(value)},
         Self::Terminal => terminal::print(value),
         Self::Serial => serial::write_u8(value),
         Self::Null => {},
@@ -370,6 +379,27 @@ impl CharDeviceIO for CharDevice {
 }
 
 pub mod stdout {
+
+    pub macro println {
+        ($fmt:expr, $($args:tt)*) => {
+            $crate::device::stdout::write_fmt(format_args!(concat!($fmt, "\n"), $($args)*));
+        },
+
+        ($fmt:expr) => {
+            $crate::device::stdout::write_fmt(format_args!(concat!($fmt, "\n")));
+        }
+    }
+
+    pub macro print {
+        ($fmt:expr, $($args:tt)*) => {
+            $crate::device::stdout::write_fmt(format_args!($fmt, $($args)*));
+        },
+
+        ($fmt:expr) => {
+            $crate::device::stdout::write_fmt(format_args!($fmt));
+        }
+    }
+
     use core::fmt::{Arguments, Write};
 
     use super::CharDeviceIO;
@@ -390,6 +420,26 @@ pub mod stdout {
 
 pub mod stderr {
     use core::fmt::{Arguments, Write};
+
+    pub macro println {
+        ($fmt:expr, $($args:tt)*) => {
+            $crate::device::stderr::write_fmt(format_args!(concat!($fmt, "\n"), $($args)*));
+        },
+
+        ($fmt:expr) => {
+            $crate::device::stderr::write_fmt(format_args!(concat!($fmt, "\n")));
+        }
+    }
+
+    pub macro print {
+        ($fmt:expr, $($args:tt)*) => {
+            $crate::device::stderr::write_fmt(format_args!($fmt, $($args)*));
+        },
+
+        ($fmt:expr) => {
+            $crate::device::stderr::write_fmt(format_args!($fmt));
+        }
+    }
 
     use super::CharDeviceIO;
     pub fn write(chr: char) {

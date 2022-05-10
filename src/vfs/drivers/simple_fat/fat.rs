@@ -2,7 +2,7 @@ use core::{ops::{Index, IndexMut, Range}, fmt::Display};
 
 use alloc::{string::{String, ToString}, vec::{Vec}};
 
-use crate::{ata::BLOCK_SIZE, api::fs::Block, klog};
+use crate::{ata::BLOCK_SIZE, api::fs::Block, klog, device};
 
 use super::PhysicalBlockAddr;
 /// The Size Of A Single Entry
@@ -23,6 +23,8 @@ pub struct FileEntry {
     name: String, 
     begin: PhysicalBlockAddr,
     size: u32,
+
+    index: usize
 }
 
 pub struct FileAttributeTable {
@@ -32,15 +34,16 @@ pub struct FileAttributeTable {
 }
 
 impl FileEntry {
-    pub fn empty() -> Self {
+    pub fn empty(index: usize) -> Self {
         Self {
             begin: 0,
             name: String::new(),
             size: 0,
+            index,
         }
     }
 
-    pub fn from_slice(data: &[u8]) -> Option<Self> {
+    pub fn from_slice(index: usize, data: &[u8]) -> Option<Self> {
         if data.len() < ENTRY_SIZE {
             klog!("Failed To Unpacked Entry. Data Len: {}", data.len());
             return None;
@@ -50,7 +53,8 @@ impl FileEntry {
         let res = Self {
             name,
             begin: u32::from_be_bytes(data[16..20].try_into().expect("Conversion Failed")),
-            size: u32::from_be_bytes(data[20..24].try_into().expect("Conversion Failed"))
+            size: u32::from_be_bytes(data[20..24].try_into().expect("Conversion Failed")),
+            index,
         };
         Some(res)
     }
@@ -69,11 +73,12 @@ impl FileEntry {
         buffer
     }
 
-    pub fn create_raw(name: &str, size: u32, begin: PhysicalBlockAddr) -> Self {
+    pub fn create_raw(index:usize, name: &str, size: u32, begin: PhysicalBlockAddr) -> Self {
         Self {
             begin,
             name: name.to_string(),
-            size
+            size,
+            index,
         }
     }
 
@@ -95,6 +100,28 @@ impl FileEntry {
         }
         blocks
     }
+
+    pub fn set_data(&mut self, data: &[u8]) {
+        self.size = data.len().try_into().expect("Failed To Cast usize -> u32");
+        let mut fat = FileAttributeTable::default();
+        if let Some(new_begin) = fat.find_free_range(data.len()) {
+            self.begin = new_begin;
+        }
+
+        for (index, chunk) in data.chunks(BLOCK_SIZE).enumerate() {
+            let mut block = Block::read(index as u32 + self.begin).expect("No");
+            block.data_mut()[0..chunk.len()].clone_from_slice(chunk);
+            block.write();
+        }
+
+        fat[self.index] = self.clone();
+
+        fat.write();
+    }
+
+    pub fn contains_block(&self, addr: PhysicalBlockAddr) -> bool {
+        self.block_addr_range().contains(&addr)
+    }
 }
 
 impl Display for FileEntry {
@@ -104,6 +131,11 @@ impl Display for FileEntry {
 }
 
 impl FileAttributeTable {
+
+    pub fn default() -> Self {
+        Self::load(0, 4)
+    }
+
     pub fn load(base_address: PhysicalBlockAddr, amount: usize) -> Self {
         let mut entries = Vec::new();
         for block_addr in base_address..(amount as u32) + base_address {
@@ -112,7 +144,7 @@ impl FileAttributeTable {
                 let entry_start = entry << 5;
                 let entry_end = entry_start + ENTRY_SIZE;
                 let slice = &block.data()[entry_start..entry_end];
-                if let Some(entry_data) = FileEntry::from_slice(slice) {
+                if let Some(entry_data) = FileEntry::from_slice(entry, slice) {
                     entries.push(entry_data);
                 }
             }
@@ -143,6 +175,57 @@ impl FileAttributeTable {
     pub fn entry_count(&self) -> usize {
         return self.entries.len();
     }
+
+    pub fn search_for_file(&self, name: &str) -> Option<&FileEntry> {
+        for entry in &self.entries {
+            if entry.name.eq(name) {
+                return Some(entry);
+            }
+        }
+        None
+    }
+
+    pub fn search_for_file_mut(&mut self, name: &str) -> Option<&mut FileEntry> {
+        for entry in &mut self.entries {
+            if entry.name.eq(name) {
+                return Some(entry);
+            }
+        }
+        None
+    }
+
+
+    pub fn find_free_range(&self, size: usize) -> Option<PhysicalBlockAddr> {
+        let blocks = Self::bytes_to_blocks(size);
+
+        for addr in 4..device::blk_dev_size() {
+            let target_range = addr as u32..(addr + blocks) as u32;
+            for entry in &self.entries {
+                let range = entry.block_addr_range();
+                klog!("Entry Range: {:?}", range);
+                klog!("Target Range: {:?}", target_range);
+                if range_overlaps(&range, &target_range) {
+                    klog!("Range Is Used.");
+                    break;
+                } else {
+                    klog!("Range Is Free.");
+                   return Some(addr as u32);
+                }
+            }
+
+        }
+
+        return None;
+    }
+
+    fn bytes_to_blocks(size: usize) -> usize {
+        let mut blocks = size / BLOCK_SIZE;
+        if size % BLOCK_SIZE > 0 {
+            blocks += 1;
+        };
+
+        return blocks;
+    }
 }
 
 impl Index<usize> for FileAttributeTable {
@@ -156,4 +239,19 @@ impl IndexMut<usize> for FileAttributeTable {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.entries[index]
     }
+}
+
+
+/// Returns True if r0 is a subset of r1, or if r1 contains r0.
+/// 
+/// That is if `r0.start >= r1.start` AND  `r0.end <= r1.end`.
+fn range_is_subset<T: PartialOrd>(r0: &Range<T>, r1: &Range<T>) -> bool {
+    (r0.start >= r1.start) && (r0.end <= r1.end)
+}
+
+/// Returns True if inner overlaps outer;
+/// 
+/// That is if `r0.start >= r1.start` OR  `r0.end <= r1.end`.
+fn range_overlaps<T: PartialOrd>(inner: &Range<T>, outer: &Range<T>) -> bool {
+    range_is_subset(inner, outer) || (inner.contains(&outer.start)) ^ (inner.contains(&outer.end))
 }

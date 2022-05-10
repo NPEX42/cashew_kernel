@@ -1,5 +1,3 @@
-pub mod palletes;
-
 use crate::{fonts, pit, vga::{self}, terminal};
 use core::ops::*;
 use font8x8::UnicodeFonts;

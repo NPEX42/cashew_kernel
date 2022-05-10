@@ -1,3 +1,4 @@
+
 pub struct Fuse(bool);
 
 impl Fuse {

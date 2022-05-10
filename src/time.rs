@@ -1,3 +1,5 @@
+
+
 use crate::{
     arch::cmos::{self, CMOS},
     csh::{ExitCode, ShellArgs},
@@ -5,6 +7,7 @@ use crate::{
 };
 
 const DAYS_BEFORE_MONTH: [u64; 13] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
+
 
 #[derive(Debug)]
 pub struct TimeStamp(u64);
@@ -53,7 +56,7 @@ pub fn time(_: ShellArgs) -> ExitCode {
         rt.day,
         rt.month,
         rt.year,
-        seconds()
+        seconds(),
     );
     ExitCode::Ok
 }
@@ -61,6 +64,7 @@ pub fn time(_: ShellArgs) -> ExitCode {
 static mut RTC_TICKS: usize = 0;
 static mut UPDATE_FREQ: usize = 1;
 
+#[doc(hidden)]
 pub fn rtc_tick() {
     unsafe { RTC_TICKS += 1 }
 }
@@ -70,12 +74,14 @@ pub fn ticks() -> usize {
 }
 
 pub fn seconds() -> f64 {
-    unsafe { (RTC_TICKS as f64) / (UPDATE_FREQ as f64) }
+    unsafe { (RTC_TICKS as f64) / (UPDATE_FREQ as f64) + ((RTC_TICKS % UPDATE_FREQ) as f64) / UPDATE_FREQ as f64 }
 }
+
 
 pub fn set_rate(rate: usize) {
     unsafe {
-        UPDATE_FREQ = 8 << 2u32.pow(rate as u32);
+        UPDATE_FREQ = 32768 >> (rate - 1);
         cmos::set_rate(rate as u8);
     }
 }
+

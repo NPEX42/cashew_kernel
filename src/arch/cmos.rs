@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use core::hint::spin_loop;
 
 use bit_field::BitField;
@@ -182,4 +183,16 @@ pub fn set_rate(rate: u8) {
     let mut cmos = CMOS::new();
 
     cmos.set_periodic_interrupt_rate(rate);
+}
+impl Display for RTC {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}:{}:{} - {}/{}/{}",
+            self.hour,
+            self.minute,
+            self.second,
+            self.day,
+            self.month,
+            self.year
+        )
+    }
 }

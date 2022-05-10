@@ -1,4 +1,4 @@
-all: run
+all: build
 
 
 release: build
@@ -12,7 +12,5 @@ run: build
 
 
 build:
-	nasm test_elf.asm -felf64 -o test_elf.o
-	ld test_elf.o test_elf
-	cp test_elf ./initrd/bin/test_elf
 	tar -cf initrd.img initrd
+	truncate -s +524288 initrd.img

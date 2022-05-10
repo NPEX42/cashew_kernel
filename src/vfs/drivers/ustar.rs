@@ -1,11 +1,14 @@
 use core::fmt::Display;
 
-use alloc::{string::String, vec::Vec};
+use alloc::{string::String, vec::Vec, boxed::Box};
 
 use crate::{
     device::{self, BlockAddr},
     vfs::block::Block,
 };
+
+
+use super::{FileIO, FileWrite, FileRead, VirtFileSystem};
 
 #[derive(PartialEq, Debug, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(u8)]
@@ -36,6 +39,18 @@ impl FileType {
             7 => Self::Contigous,
 
             _ => Self::Unknown,
+        }
+    }
+}
+
+pub struct FileSystem;
+
+impl VirtFileSystem for FileSystem {
+    fn open_file(filename: &str) -> Option<alloc::boxed::Box<dyn FileIO>> {
+        if let Ok(file_info) = FileInfo::open(filename) {
+            Some(Box::new(file_info))
+        } else {
+            return None;
         }
     }
 }
@@ -152,5 +167,36 @@ impl FileInfo {
 impl Display for FileInfo {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:>4} - {}", self.size(), self.name())
+    }
+}
+
+impl FileWrite for FileInfo {
+    fn write(&self, _: usize, _: u8) {
+        unimplemented!("USTAR IS READ ONLY")
+    }
+}
+
+impl FileRead for FileInfo {
+    fn read(&self, index: usize) -> u8 {
+        self.to_vec()[index]
+    }
+}
+
+impl FileIO for FileInfo {
+    fn close(&mut self) {}
+
+    fn read_to_string(&self) -> String {
+        self.to_string()
+    }
+
+    fn read_bytes(&self, buffer: &mut [u8]) -> usize {
+        let temp_data = self.to_vec();
+        let size = buffer.len().min(temp_data.len());
+        buffer[..size].copy_from_slice(&temp_data[..size]);
+        return size;
+    }
+
+    fn read_to_vec(&self) -> Vec<u8> {
+        self.to_vec()
     }
 }

@@ -2,7 +2,7 @@ runner = "qemu-system-x86_64"
 
 [disks]
 boot = "target/x86_64-custom/release/boot-bios-cashew_kernel.img"
-hdb = "sfat.img"
+hdb = "initrd.img"
 
 [machine]
 memory = "256M"

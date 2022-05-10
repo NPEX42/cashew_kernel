@@ -9,9 +9,9 @@
 #![feature(const_btree_new)]
 #![feature(const_fn_trait_bound)]
 #![feature(int_log)]
+#![feature(decl_macro)]
 
 use core::panic::PanicInfo;
-
 pub mod api;
 
 pub mod arch;
@@ -19,6 +19,7 @@ pub mod ata;
 pub mod csh;
 pub mod data;
 pub mod device;
+pub mod elf;
 pub mod fonts;
 pub mod fuse;
 pub mod graphics_2d;
@@ -43,6 +44,7 @@ pub use alloc::*;
 use arch::cmos;
 use bootloader::BootInfo;
 use x86_64::VirtAddr;
+
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -73,7 +75,9 @@ pub fn boot(info: &'static mut BootInfo) {
         terminal::initialize();
         arch::initialize_interrupts();
         arch::enable_interrupts();
-        pit::set_frequency(0, 60);
+        pit::set_frequency(0, 1000);
+
+        
 
         input::init();
         let physical_memory_offset = info.physical_memory_offset.into_option().unwrap();
@@ -83,7 +87,10 @@ pub fn boot(info: &'static mut BootInfo) {
         mem::init(phys_mem_offset, &*info.memory_regions);
 
         cmos::CMOS::new().enable_periodic_interrupt();
-        time::set_rate(3);
+        time::set_rate(15);
+
+
+        println!("[RTC] - Current Time: {}", cmos::CMOS::new().rtc());
 
         println!(
             "Main Processor: '{:?}' - SSE {} - SSE2 {} - AVX {}",

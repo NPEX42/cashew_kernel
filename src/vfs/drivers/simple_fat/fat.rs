@@ -1,4 +1,4 @@
-use core::{ops::{Index, IndexMut, Range}, fmt::Display};
+use core::{ops::{Index, IndexMut, Range, Sub, Add}, fmt::{Display, Debug}};
 
 use alloc::{string::{String, ToString}, vec::{Vec}};
 
@@ -24,8 +24,11 @@ pub struct FileEntry {
     begin: PhysicalBlockAddr,
     size: u32,
 
-    index: usize
+    index: usize,
+    data: Vec<u8>,
+    is_empty: bool,
 }
+
 
 pub struct FileAttributeTable {
     base: PhysicalBlockAddr,
@@ -34,12 +37,23 @@ pub struct FileAttributeTable {
 }
 
 impl FileEntry {
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     pub fn empty(index: usize) -> Self {
         Self {
             begin: 0,
             name: String::new(),
             size: 0,
             index,
+            data: Vec::new(),
+            is_empty: true,
         }
     }
 
@@ -55,6 +69,8 @@ impl FileEntry {
             begin: u32::from_be_bytes(data[16..20].try_into().expect("Conversion Failed")),
             size: u32::from_be_bytes(data[20..24].try_into().expect("Conversion Failed")),
             index,
+            data: Vec::new(),
+            is_empty: (data[0] == 0)
         };
         Some(res)
     }
@@ -73,12 +89,14 @@ impl FileEntry {
         buffer
     }
 
-    pub fn create_raw(index:usize, name: &str, size: u32, begin: PhysicalBlockAddr) -> Self {
+    pub fn create_raw(index:usize, name: &str, size: u32, begin: PhysicalBlockAddr, is_empty: bool) -> Self {
         Self {
             begin,
             name: name.to_string(),
             size,
             index,
+            data: Vec::new(),
+            is_empty
         }
     }
 
@@ -89,8 +107,9 @@ impl FileEntry {
         return self.begin..end;
     }
 
+    /// An Entry Is Considered Empty If `Begin` is 0.
     pub fn is_empty(&self) -> bool {
-        self.begin == 0
+        self.is_empty
     }
 
     pub fn blocks(&self) -> Vec<Block> {
@@ -101,22 +120,76 @@ impl FileEntry {
         blocks
     }
 
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.into();
+    }
+
+    pub fn erase(&mut self) {
+        self.begin = 0;
+        self.size = 0;
+        self.set_name("\0");
+        self.mark_free();
+        self.set_data(&[]);
+
+    }
+
+    pub fn mark_used(&mut self) {
+        self.is_empty = false;
+    }
+
+    pub fn mark_free(&mut self) {
+        self.is_empty = true;
+    }
+
     pub fn set_data(&mut self, data: &[u8]) {
         self.size = data.len().try_into().expect("Failed To Cast usize -> u32");
-        let mut fat = FileAttributeTable::default();
-        if let Some(new_begin) = fat.find_free_range(data.len()) {
-            self.begin = new_begin;
-        }
 
-        for (index, chunk) in data.chunks(BLOCK_SIZE).enumerate() {
-            let mut block = Block::read(index as u32 + self.begin).expect("No");
-            block.data_mut()[0..chunk.len()].clone_from_slice(chunk);
-            block.write();
+    
+
+        let mut fat = super::FILE_SYSTEM.lock();
+        if self.size > 0 {
+            if let Some(new_begin) = fat.find_free_range(data.len()) {
+                self.begin = new_begin;
+            }
+
+            for (index, chunk) in data.chunks(BLOCK_SIZE).enumerate() {
+                let mut block = Block::read(index as u32 + self.begin).expect("No");
+                block.data_mut()[0..chunk.len()].clone_from_slice(chunk);
+                block.write();
+            }
         }
 
         fat[self.index] = self.clone();
 
         fat.write();
+    }
+
+    pub fn size(&self) -> usize {
+        self.size as usize
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+
+        let size = self.size as usize;
+        let mut buffer = Vec::new();
+
+        'outer: for block in self.blocks() {
+
+            let bytes = block.data();
+
+            for i in 0..bytes.len() {
+
+                if buffer.len() >= size {
+                    break 'outer;
+                }
+
+                buffer.push(bytes[i]);
+
+            }
+
+        }
+
+        buffer
     }
 
     pub fn contains_block(&self, addr: PhysicalBlockAddr) -> bool {
@@ -138,16 +211,19 @@ impl FileAttributeTable {
 
     pub fn load(base_address: PhysicalBlockAddr, amount: usize) -> Self {
         let mut entries = Vec::new();
+        let mut fat_index = 0;
         for block_addr in base_address..(amount as u32) + base_address {
             let block = Block::read(block_addr).expect("Failed To Read Block");
             for entry in 0..ENTRIES_PER_BLOCK {
                 let entry_start = entry << 5;
                 let entry_end = entry_start + ENTRY_SIZE;
                 let slice = &block.data()[entry_start..entry_end];
-                if let Some(entry_data) = FileEntry::from_slice(entry, slice) {
+                if let Some(entry_data) = FileEntry::from_slice(fat_index * ENTRIES_PER_BLOCK + entry, slice) {
+                    //klog!("Loaded Entry: {:?}", entry_data);
                     entries.push(entry_data);
                 }
             }
+            fat_index += 1;
         }
 
         FileAttributeTable { entries, base: base_address, size: amount }
@@ -194,25 +270,48 @@ impl FileAttributeTable {
         None
     }
 
+    pub fn next_free_index(&self) -> Option<usize> {
+        for (idx, entry) in self.entries.iter().enumerate() {
+            if entry.is_empty() {
+                return Some(idx);
+            }
+        }
+
+        None
+    }
+
+    pub fn next_free_entry(&self) -> Option<FileEntry> {
+        match self.next_free_index() {
+            None => None,
+            Some(index) => Some(self[index].clone()),
+        }
+    }
+
 
     pub fn find_free_range(&self, size: usize) -> Option<PhysicalBlockAddr> {
         let blocks = Self::bytes_to_blocks(size);
 
         for addr in 4..device::blk_dev_size() {
             let target_range = addr as u32..(addr + blocks) as u32;
+            let mut is_range_free = true;
             for entry in &self.entries {
                 let range = entry.block_addr_range();
+                if range.is_empty() {continue;}
                 klog!("Entry Range: {:?}", range);
                 klog!("Target Range: {:?}", target_range);
                 if range_overlaps(&range, &target_range) {
                     klog!("Range Is Used.");
-                    break;
+                    is_range_free = false;
                 } else {
-                    klog!("Range Is Free.");
-                   return Some(addr as u32);
+                    //klog!("Range Is Free.");
                 }
             }
 
+            if is_range_free {
+                return Some(target_range.start);
+            }
+
+            
         }
 
         return None;
@@ -228,6 +327,7 @@ impl FileAttributeTable {
     }
 }
 
+
 impl Index<usize> for FileAttributeTable {
     type Output = FileEntry;
     fn index(&self, index: usize) -> &Self::Output {
@@ -242,16 +342,18 @@ impl IndexMut<usize> for FileAttributeTable {
 }
 
 
-/// Returns True if r0 is a subset of r1, or if r1 contains r0.
-/// 
-/// That is if `r0.start >= r1.start` AND  `r0.end <= r1.end`.
-fn range_is_subset<T: PartialOrd>(r0: &Range<T>, r1: &Range<T>) -> bool {
-    (r0.start >= r1.start) && (r0.end <= r1.end)
-}
 
 /// Returns True if inner overlaps outer;
 /// 
 /// That is if `r0.start >= r1.start` OR  `r0.end <= r1.end`.
-fn range_overlaps<T: PartialOrd>(inner: &Range<T>, outer: &Range<T>) -> bool {
-    range_is_subset(inner, outer) || (inner.contains(&outer.start)) ^ (inner.contains(&outer.end))
+fn range_overlaps<T: Ord + Sub<T, Output = T> + Add<T, Output = T> + Copy + Debug>(inner: &Range<T>, outer: &Range<T>) -> bool {
+    
+    let min = inner.start.min(outer.start);
+    let max = inner.end.max(outer.end);
+    let sum_of_ranges = (inner.end - inner.start) + (outer.end - outer.start);
+    //klog!("Sum Of Ranges: {:?}", sum_of_ranges);
+    let max_min_diff = max - min;
+    //klog!("Max - Min = {:?}", max_min_diff);
+    sum_of_ranges > max_min_diff
+
 }

@@ -10,12 +10,12 @@ use core::arch::asm;
 
 
 
-use alloc::{vec::Vec, string::String};
+use alloc::{vec::Vec};
 #[cfg(not(test))]
 use bootloader::entry_point;
 use bootloader::BootInfo;
-use cashew_kernel::{ata, graphics_2d::*, kerr, println, csh, vfs};
-use elf_rs::{ElfFile};
+use cashew_kernel::{ata, graphics_2d::*, kerr, println, csh, net::{self}};
+
 
 #[cfg(not(test))]
 entry_point!(kernel_main);
@@ -27,38 +27,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         cashew_kernel::boot(boot_info);
 
 
-        println!("Booting Complete, Press Any Key To continue");
+        println!("Booting Complete");
 
-        match vfs::open_file("initrd/bin/a.out") {
-            Some(file) => {
-                let bytes = file.read_to_vec();
-                println!("Loaded File sleep, Size: {} Bytes", bytes.len());
+        
 
-                let elf = cashew_kernel::elf::parse(&bytes).expect("Failed To Parse ELF File");
-
-                println!("ELF Header: {:#?}", elf.elf_header());
-                println!("Entry Point: {:#010x}", elf.entry_point());
-
-                println!("==== PROG. HEADERS ====");
-                for header in elf.program_header_iter() {
-                    println!("{:?} - {}B - Physical: 0x{:08x} - Virtual: 0x{:08x}",
-                        header.ph_type(), 
-                        header.filesz(), 
-                        header.paddr(),
-                        header.vaddr(),
-                    );
-                }
-
-                println!("==== SECTIONS ====");
-                for section in elf.section_header_iter() {
-                    println!("{} - 0x{:08x} - {:?}", String::from_utf8_lossy(section.section_name()), section.addr(), section.flags());
-                }
-
-
-
-            },
-            None => {println!("Failed To Open File...");},
-        }
+        net::init();
 
 
         ata::cache_stats();

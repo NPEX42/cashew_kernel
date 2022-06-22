@@ -41,6 +41,11 @@ bit_field = "0.10.1"
 [dependencies.elf_rs]
 version = "0.2.0"
 
+[dependencies.smoltcp]
+version = "0.8.0"
+default-features = false
+features = ["alloc", "medium-ethernet", "socket-tcp", "socket-udp", "socket-dhcpv4", "proto-ipv4", "proto-dhcpv4"]
+
 [dependencies.ansi-parser]
 version = "0.8.0"
 default-features = false

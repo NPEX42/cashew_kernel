@@ -6,9 +6,9 @@ use crate::vfs::drivers::FileIO;
 
 use self::drivers::{
     VirtFileSystem, 
-    ustar
+    ustar::{self, FileSystem}
 };
 
 pub fn open_file(filename: &str) -> Option<Box<dyn FileIO>> {
-    ustar::FileSystem::open_file(filename)
+    ustar::FileSystem::open_file(&FileSystem, filename)
 }

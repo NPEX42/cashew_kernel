@@ -27,7 +27,9 @@ pub mod input;
 pub mod locked;
 pub mod logger;
 pub mod mem;
+pub mod net;
 pub mod pit;
+pub mod pci;
 pub mod serial;
 pub mod terminal;
 pub mod time;
@@ -86,6 +88,8 @@ pub fn boot(info: &'static mut BootInfo) {
         mem::setup_from(info);
         mem::init(phys_mem_offset, &*info.memory_regions);
 
+        pci::init();
+
         cmos::CMOS::new().enable_periodic_interrupt();
         time::set_rate(15);
 
@@ -115,8 +119,9 @@ pub fn boot(info: &'static mut BootInfo) {
         csh::init().expect("Failed To Initialize The Shell...");
         csh::exec("mount hdb");
 
-
-        
+        device::set_stdout(device::CharDevice::Terminal);
+        device::set_stdin(device::CharDevice::Terminal);
+        device::set_stderr(device::CharDevice::Serial);
 
         //post::self_test();
     }

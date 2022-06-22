@@ -19,11 +19,11 @@ macro_rules! fatal {
 #[macro_export]
 macro_rules! klog {
     ($fmt:expr, $($args:tt)*) => {
-        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!(), $($args)*));
+        $crate::serial::_print(format_args!(concat!("[LOG - {}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!(), $($args)*));
     };
 
     ($fmt:expr) => {
-        $crate::serial::_print(format_args!(concat!("[LOG|{}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!()))
+        $crate::serial::_print(format_args!(concat!("[LOG - {}:{}:{}]: ", $fmt, "\n"), file!(), line!(), column!()))
     };
 }
 

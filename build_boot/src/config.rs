@@ -14,7 +14,8 @@ pub struct Config {
 struct Machine {
     pub memory: Option<String>,
     pub tty: Option<String>,
-    pub wait_for_gdb: bool
+    pub wait_for_gdb: bool,
+    pub nic: Option<String>,
 }
 
 impl Config {
@@ -78,7 +79,13 @@ impl Config {
                 args.push("-S".into());
             }
 
+            if let Some(nic) = &machine.nic {
+                args.push("-device".into());
+                args.push(nic.into());
+            }
+
             for (name, disk) in self.get_disks().unwrap().iter() {
+                // Boot has been dealt With
                 if name.eq_ignore_ascii_case("boot") {
                     continue;
                 }

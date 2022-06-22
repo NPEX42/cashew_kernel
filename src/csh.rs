@@ -4,15 +4,22 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{device, input, mem, println, sprint, time};
+use crate::{device, input, mem, println, sprint, time, terminal};
 
 pub mod cat;
 pub mod ls;
 pub mod objdump;
+pub mod casm;
+pub mod read;
+pub mod create;
+pub mod delete;
+pub mod forth;
 
 pub type ShellArgs = Vec<String>;
 pub type ProgramMain = fn(ShellArgs) -> ExitCode;
 static mut PROGS: BTreeMap<String, ProgramMain> = BTreeMap::new();
+#[allow(unused)]
+static mut ENV: BTreeMap<String, String> = BTreeMap::new();
 
 pub fn add_program(name: &str, main: ProgramMain) -> Result<(), ()> {
     unsafe {
@@ -25,12 +32,20 @@ pub fn add_program(name: &str, main: ProgramMain) -> Result<(), ()> {
 pub fn init() -> Result<(), ()> {
     add_program("cat", cat::main)?;
     add_program("csh", main)?;
+    add_program("casm", casm::main)?;
     add_program("mem", mem::csh_stats)?;
     add_program("mount", device::mount_main)?;
     add_program("objdump", objdump::main)?;
     add_program("help", help)?;
     add_program("time", time::time)?;
     add_program("shutdown", shutdown)?;
+    add_program("ls", ls::main)?;
+    add_program("delete", delete::main)?;
+    add_program("create", create::main)?;
+    add_program("read", read::main)?;
+    add_program("cls", clear_screen)?;
+    add_program("clr", clear_screen)?;
+    add_program("clear", clear_screen)?;
 
     Ok(())
 }
@@ -120,6 +135,12 @@ pub fn main(_: ShellArgs) -> ExitCode {
     }
 
     ExitCode::Ok
+}
+
+pub fn clear_screen(_: ShellArgs) -> ExitCode {
+    terminal::clear();
+    terminal::home();
+    return ExitCode::Ok;
 }
 
 pub fn help(_: ShellArgs) -> ExitCode {

@@ -14,7 +14,7 @@ fn really_long_function_sync() {
 }
 
 async fn really_long_function_async() {
-	//Again, A REALLY Complex, Slow Operation
+	// Again, A REALLY Complex, Slow Operation
 	let a = 420 / 69;
 }
 
@@ -24,8 +24,8 @@ pub async fn main() {
 		really_long_function_sync();
 	}
 
-	// Run The Function, Switching Execution To Something Else after calling The
-	//Function
+	// Run The Function, Switching Execution To Something Else after calling 
+    // The Function
 	for _ in 0..1000 {
 		await really_long_function_async();
 	}

@@ -8,7 +8,7 @@ use crate::{
 };
 
 
-use super::{FileIO, FileWrite, FileRead, VirtFileSystem};
+use super::{FileIO, FileWrite, FileRead, VirtFileSystem, FileAppend};
 
 #[derive(PartialEq, Debug, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(u8)]
@@ -46,7 +46,7 @@ impl FileType {
 pub struct FileSystem;
 
 impl VirtFileSystem for FileSystem {
-    fn open_file(filename: &str) -> Option<alloc::boxed::Box<dyn FileIO>> {
+    fn open_file(&self, filename: &str) -> Option<alloc::boxed::Box<dyn FileIO>> {
         if let Ok(file_info) = FileInfo::open(filename) {
             Some(Box::new(file_info))
         } else {
@@ -171,8 +171,22 @@ impl Display for FileInfo {
 }
 
 impl FileWrite for FileInfo {
-    fn write(&self, _: usize, _: u8) {
+    fn write(&mut self, _: usize, _: u8) {
         unimplemented!("USTAR IS READ ONLY")
+    }
+}
+
+impl FileAppend for FileInfo {
+    fn append(&mut self, _: u8) {
+        unimplemented!("READ ONLY")
+    }
+
+    fn append_vec(&mut self, _: Vec<u8>) {
+        unimplemented!("READ ONLY")
+    }
+
+    fn append_bytes(&mut self, _: &[u8]) {
+        unimplemented!("READ ONLY")
     }
 }
 
@@ -180,11 +194,7 @@ impl FileRead for FileInfo {
     fn read(&self, index: usize) -> u8 {
         self.to_vec()[index]
     }
-}
-
-impl FileIO for FileInfo {
-    fn close(&mut self) {}
-
+    
     fn read_to_string(&self) -> String {
         self.to_string()
     }
@@ -199,4 +209,16 @@ impl FileIO for FileInfo {
     fn read_to_vec(&self) -> Vec<u8> {
         self.to_vec()
     }
+}
+
+impl FileIO for FileInfo {
+    fn close(&mut self) {}
+    fn rename(&mut self, _: &str) {
+        unimplemented!("READ-ONLY")
+    }
+
+    fn size(&self) -> usize {
+        self.size as usize
+    }
+    
 }
